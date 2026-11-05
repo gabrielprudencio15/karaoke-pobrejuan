@@ -280,7 +280,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
     <button id="nextBtn" class="pri">▶ Próximo</button>
     <button id="endBtn" title="Encerrar e dar a nota">🏁 Encerrar</button>
     <button id="skipBtn" title="Pular etapa (Enter)">⏭ Pular</button>
-    <button id="homeBtn" title="Voltar ao telão">🏠</button>
+    <button id="homeBtn" title="Tela inicial (fila e placar). Clique de novo para voltar à música">🏠</button>
     <button id="tvBtn">📺 TV</button>
   </footer>
 </main>
@@ -634,7 +634,7 @@ media.onloadedmetadata=()=>{const v=media.videoWidth>0;media.classList.toggle('s
 media.onended=()=>{if(syncing)return;if(busy)finishPerformance();};
 media.onplay=()=>$('#playBtn').textContent='⏸';
 media.onpause=()=>$('#playBtn').textContent='▶';
-function play(){if(!media.src)return;ensureCtx();media.play().catch(()=>{})}
+function play(){if(!media.src)return;if(document.body.dataset.view==='lobby')setView('sing');ensureCtx();media.play().catch(()=>{})}
 function togglePlay(){if(phaseOpen)return;if(!media.src){toast('Nenhuma música carregada. Escolha uma no catálogo ou chame alguém da fila.');return}media.paused?play():media.pause()}
 $('#playBtn').onclick=togglePlay;
 $('#prevBtn').onclick=()=>{media.currentTime=0};
@@ -943,6 +943,7 @@ $('#nextBtn').onclick=$('#nextBtn2').onclick=()=>callNext();
 $('#endBtn').onclick=()=>{if(busy&&!phaseOpen)finishPerformance();else if(!busy){media.pause();setView('lobby')}};
 $('#skipBtn').onclick=()=>{skipFlag=true};
 $('#homeBtn').onclick=async()=>{
+  if(document.body.dataset.view==='lobby'){if(media.src){setView('sing');toast('De volta à música. Aperte ▶ para continuar.')}return}
   if(busy){if(!await kConfirm('A apresentação atual para e a pessoa volta para o topo da fila.',{title:'Cancelar apresentação?',ok:'Cancelar apresentação',cancel:'Continuar cantando',icon:'⏹️',danger:true}))return;
     skipFlag=true;const e=current;try{await store.update('queue',e.id,{status:'waiting',pos:(waiting()[0]?.pos??Date.now())-1})}catch(err){}}
   backToLobby();
