@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611050941"></script>
+<script src="karaoke-store.js?v=202611051130"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -528,17 +528,21 @@ async function loadDir(){
   await walk(dirHandle,0);songs={};await ingest(files);toast(`${Object.keys(songs).length} músicas carregadas`);
 }
 $('#folderBtn').onclick=async()=>{
+  if(!localStorage.getItem('k_dirHint')){
+    await kDialog({icon:'📂',title:'Escolher a pasta das músicas',msg:'1. Na janela do Windows, entre na pasta com os MP3 e as letras (.lrc) e clique em “Selecionar pasta”.\n2. O Chrome vai perguntar se o site pode ver os arquivos: clique em “Ver arquivos”.\n\nNada é enviado para a internet, as músicas ficam só neste notebook.',ok:'Vamos lá'});
+    try{localStorage.setItem('k_dirHint','1')}catch(e){}
+  }
   if(!window.showDirectoryPicker){$('#folderInput').click();return}
-  try{dirHandle=await showDirectoryPicker({id:'karaoke',mode:'readwrite'});await idbSet('dir',dirHandle);await loadDir();$('#reopenBtn').style.display='none'}
+  try{dirHandle=await showDirectoryPicker({id:'karaoke',mode:'read'});await idbSet('dir',dirHandle);await loadDir();$('#reopenBtn').style.display='none'}
   catch(e){if(e.name!=='AbortError')$('#folderInput').click()}
 };
-$('#reopenBtn').onclick=async()=>{try{if((await dirHandle.requestPermission({mode:'readwrite'}))==='granted'){await loadDir();$('#reopenBtn').style.display='none'}}catch(e){toast('Não deu para reabrir: '+e.message)}};
+$('#reopenBtn').onclick=async()=>{try{if((await dirHandle.requestPermission({mode:'read'}))==='granted'){await loadDir();$('#reopenBtn').style.display='none'}}catch(e){toast('Não deu para reabrir: '+e.message)}};
 (async()=>{try{const h=await idbGet('dir');if(!h)return;dirHandle=h;
-  if((await h.queryPermission({mode:'readwrite'}))==='granted')await loadDir();
+  if((await h.queryPermission({mode:'read'}))==='granted')await loadDir();
   else{$('#reopenBtn').style.display='';$('#reopenBtn').textContent='📂 Reabrir pasta "'+h.name+'"'}}catch(e){}})();
 async function writeLrc(id,text){
   if(!dirHandle||!songs[id])return false;
-  try{const fh=await dirHandle.getFileHandle(baseName(songs[id].file.name)+'.lrc',{create:true});const w=await fh.createWritable();await w.write(text);await w.close();return true}catch(e){return false}
+  try{if((await dirHandle.requestPermission({mode:'readwrite'}))!=='granted')return false;const fh=await dirHandle.getFileHandle(baseName(songs[id].file.name)+'.lrc',{create:true});const w=await fh.createWritable();await w.write(text);await w.close();return true}catch(e){return false}
 }
 
 /* ===================== fila e placar ===================== */
