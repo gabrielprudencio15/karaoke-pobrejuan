@@ -79,6 +79,20 @@ nav button.on{color:var(--acc);font-weight:800}
 .big{font-family:"Bebas Neue",Impact,sans-serif;font-size:56px;color:var(--acc2);text-align:center;line-height:1}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--acc);padding:12px 18px;border-radius:12px;z-index:99;font-size:15px;max-width:90vw}
 .mode{color:var(--dim);font-size:13px}
+
+/* janelas de aviso/confirmação (no lugar do alert/confirm do Windows) */
+.kdlg{position:fixed;inset:0;z-index:200;background:rgba(6,4,3,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:kfade .15s ease}
+.kbox{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:18px;padding:22px 22px 18px;width:min(440px,100%);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:kpop .2s ease}
+.kbox.danger{border-top-color:var(--acc2)}
+.kic{font-size:34px;line-height:1;margin-bottom:10px}
+.kt{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;letter-spacing:1px;color:var(--acc);margin-bottom:6px;font-weight:400}
+.kbox.danger .kt{color:#ff6b6b}
+.km{color:var(--txt);font-size:15px;line-height:1.5;white-space:pre-line}
+.kb{display:flex;gap:10px;justify-content:center;margin-top:20px}
+.kb button{flex:1;max-width:210px;padding:11px 14px;font-weight:700;font-size:15px}
+.kb button.pri.danger{background:var(--acc2);border-color:var(--acc2);color:#fff}
+@keyframes kfade{from{opacity:0}}
+@keyframes kpop{from{transform:scale(.92);opacity:0}}
 </style>
 </head>
 <body>
@@ -154,6 +168,20 @@ const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:
 const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'⚔️ Batalha'};
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
 
+/* janelas bonitas no lugar do alert/confirm do Windows */
+function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null,danger=false}){
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.className='kdlg';
+    ov.innerHTML=`<div class="kbox${danger?' danger':''}" role="dialog" aria-modal="true"><div class="kic">${icon}</div>${title?`<div class="kt">${esc(title)}</div>`:''}<div class="km">${esc(msg)}</div><div class="kb">${cancel?`<button data-v="0">${esc(cancel)}</button>`:''}<button class="pri${danger?' danger':''}" data-v="1">${esc(ok)}</button></div></div>`;
+    const done=v=>{document.removeEventListener('keydown',key,true);ov.remove();res(v)};
+    const key=e=>{if(e.key==='Escape'||e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();done(e.key==='Enter')}};
+    ov.onclick=e=>{const b=e.target.closest('button');if(b)done(b.dataset.v==='1');else if(e.target===ov&&cancel)done(false)};
+    document.addEventListener('keydown',key,true);document.body.appendChild(ov);ov.querySelector('.pri').focus();
+  });
+}
+const kAlert=(msg,title='',icon='⚠️')=>kDialog({msg,title,icon});
+const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
+
 document.title='Karaokê · '+C.MARCA;
 $('#brand').innerHTML=C.LOGO_URL?`<img src="${esc(C.LOGO_URL)}" alt="${esc(C.MARCA)}">`:`<div class="b disp">${esc(C.MARCA)}</div>`;
 $('#ev').textContent=C.EVENTO+' · Karaokê das Unidades';
@@ -223,7 +251,7 @@ function renderFila(){
   $('#fila').innerHTML=w.length?w.map((x,i)=>`<div class="q ${x.device_id===dev?'me':''}"><span class="n">${i+1}</span><div class="t"><b>${esc(x.name)}</b>${chip(x.unit)}${x.partner?' & '+esc(x.partner):''}<div class="mode">${MODE[x.mode]||''} · ${esc(x.song_title)}</div></div>${x.device_id===dev?`<button data-cancel="${x.id}">Sair</button>`:''}</div>`).join('')
     :'<p class="dim">A fila está vazia. Bora ser o primeiro? 🎤</p>';
 }
-$('#fila').onclick=async e=>{const id=e.target.dataset.cancel;if(id&&confirm('Sair da fila?')){try{await store.update('queue',id,{status:'canceled'});toast('Você saiu da fila')}catch(err){toast('Erro: '+err.message)}}};
+$('#fila').onclick=async e=>{const id=e.target.dataset.cancel;if(id&&await kConfirm('Você perde o seu lugar na fila.',{title:'Sair da fila?',ok:'Sair',cancel:'Ficar',icon:'🚪',danger:true})){try{await store.update('queue',id,{status:'canceled'});toast('Você saiu da fila')}catch(err){toast('Erro: '+err.message)}}};
 
 function renderPlacar(){
   const soma=C.RANKING_UNIDADES==='soma';

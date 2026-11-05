@@ -158,6 +158,20 @@ footer #seek{flex:1;min-width:120px}
 footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);white-space:nowrap}
 #playBtn{width:46px;font-size:18px}
 #liveNote{min-width:60px;font-weight:800}
+
+/* janelas de aviso/confirmação (no lugar do alert/confirm do Windows) */
+.kdlg{position:fixed;inset:0;z-index:200;background:rgba(6,4,3,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:kfade .15s ease}
+.kbox{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:18px;padding:22px 22px 18px;width:min(440px,100%);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:kpop .2s ease}
+.kbox.danger{border-top-color:var(--acc2)}
+.kic{font-size:34px;line-height:1;margin-bottom:10px}
+.kt{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;letter-spacing:1px;color:var(--acc);margin-bottom:6px;font-weight:400}
+.kbox.danger .kt{color:#ff6b6b}
+.km{color:var(--txt);font-size:15px;line-height:1.5;white-space:pre-line}
+.kb{display:flex;gap:10px;justify-content:center;margin-top:20px}
+.kb button{flex:1;max-width:210px;padding:11px 14px;font-weight:700;font-size:15px}
+.kb button.pri.danger{background:var(--acc2);border-color:var(--acc2);color:#fff}
+@keyframes kfade{from{opacity:0}}
+@keyframes kpop{from{transform:scale(.92);opacity:0}}
 </style>
 </head>
 <body data-view="lobby">
@@ -288,6 +302,20 @@ const unitOf=id=>UNITS.find(u=>u.id===id)||{id:id||'?',nome:id||'?',cor:'#888'};
 const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:${u.cor}">${esc(u.nome)}</span>`};
 const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'⚔️ Batalha'};
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3500)}
+
+/* janelas bonitas no lugar do alert/confirm do Windows */
+function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null,danger=false}){
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.className='kdlg';
+    ov.innerHTML=`<div class="kbox${danger?' danger':''}" role="dialog" aria-modal="true"><div class="kic">${icon}</div>${title?`<div class="kt">${esc(title)}</div>`:''}<div class="km">${esc(msg)}</div><div class="kb">${cancel?`<button data-v="0">${esc(cancel)}</button>`:''}<button class="pri${danger?' danger':''}" data-v="1">${esc(ok)}</button></div></div>`;
+    const done=v=>{document.removeEventListener('keydown',key,true);ov.remove();res(v)};
+    const key=e=>{if(e.key==='Escape'||e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();done(e.key==='Enter')}};
+    ov.onclick=e=>{const b=e.target.closest('button');if(b)done(b.dataset.v==='1');else if(e.target===ov&&cancel)done(false)};
+    document.addEventListener('keydown',key,true);document.body.appendChild(ov);ov.querySelector('.pri').focus();
+  });
+}
+const kAlert=(msg,title='',icon='⚠️')=>kDialog({msg,title,icon});
+const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
 const media=$('#media'),box=$('#lyrics');
 
 let S={};try{S=JSON.parse(localStorage.getItem('karaoke')||'{}')}catch(e){}
@@ -411,7 +439,7 @@ async function micsOn(){
     const m2=$('#mic2Sel').value;
     if(m2==='right'){
       const ch=await openStereo($('#mic1Sel').value);
-      if(ch===1)alert('O aparelho chegou em MONO (1 canal): o Mic 2 vai ficar mudo.\n\nNo Windows: Painel de Som → Gravação → (sua interface) → Propriedades → Avançado → escolha um formato "2 canais". Depois desligue e ligue os microfones aqui.');
+      if(ch===1)kAlert('O aparelho chegou em MONO (1 canal), então o Mic 2 vai ficar mudo.\n\nNo Windows: Painel de Som → Gravação → (sua interface) → Propriedades → Avançado → escolha um formato "2 canais". Depois desligue e ligue os microfones aqui.','Mic 2 sem som','🎚️');
       else toast('Interface estéreo: fale no mic A (medidor 1) e no mic B (medidor 2) para conferir');
     }else{
       await openMic(0,$('#mic1Sel').value);
@@ -422,7 +450,7 @@ async function micsOn(){
     }
     $('#micBtn').classList.add('on');$('#micBtn').textContent=mics[1]?'🎤🎤 2 microfones ligados':'🎤 Microfone ligado';
     await listDevices();
-  }catch(e){micsOff();alert('Não consegui acessar o microfone: '+e.message)}
+  }catch(e){micsOff();kAlert('Não consegui acessar o microfone.\n\nConfira se ele está conectado e se o navegador tem permissão (ícone ao lado do endereço do site).\n\nDetalhe: '+e.message,'Microfone','🎤')}
 }
 function micsOff(){mics.forEach((m,i)=>{if(m){m.stream.getTracks().forEach(t=>t.stop());m.nodes.forEach(n=>{try{n.disconnect()}catch(e){}});mics[i]=null}});
   $('#micBtn').classList.remove('on');$('#micBtn').textContent='🎤 Ligar microfones';$('#meter1').style.width=$('#meter2').style.width='0'}
@@ -430,7 +458,7 @@ const micsActive=()=>mics.some(Boolean);
 $('#micBtn').onclick=()=>micsActive()?micsOff():micsOn();
 $('#mic1Sel').onchange=()=>{S.mic1=$('#mic1Sel').value;save();if(micsActive()){micsOff();micsOn()}};
 $('#mic2Sel').onchange=()=>{S.mic2=$('#mic2Sel').value;save();if(micsActive()){micsOff();micsOn()}};
-$('#outSel').onchange=async()=>{ensureCtx();S.out=$('#outSel').value;save();try{await ctx.setSinkId($('#outSel').value)}catch(e){alert('Não deu para trocar a saída: '+e.message)}};
+$('#outSel').onchange=async()=>{ensureCtx();S.out=$('#outSel').value;save();try{await ctx.setSinkId($('#outSel').value)}catch(e){kAlert('Não deu para trocar a saída de som.\n\nDetalhe: '+e.message,'Saída de som','🔈')}};
 
 /* gravação */
 let rec=null,chunks=[];
@@ -579,7 +607,7 @@ function renderLobby(){
   if(!LINK){$('#qr').style.display='none';$('#qrUrl').textContent='(o QR Code aparece quando o site estiver publicado)'}
 }
 $('#testCel').onclick=()=>window.open('celular.html','_blank');
-$('#resetAll').onclick=async()=>{if(!confirm('Zerar fila, votos e notas da noite?'))return;
+$('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos e as notas da noite. Não dá para desfazer.',{title:'Zerar a noite?',ok:'Zerar tudo',icon:'🧹',danger:true}))return;
   for(const t of['queue','votes','performances'])await store.clear(t);await setStage({status:'lobby',queue_id:null,voting_until:null});refresh();toast('Noite zerada')};
 
 /* ===================== música e letra ===================== */
@@ -623,7 +651,7 @@ function parseLyrics(txt){
 }
 function toLRC(){return lyr.lines.map(l=>{const m=Math.floor(l.t/60),s=(l.t%60).toFixed(2).padStart(5,'0');return `[${String(m).padStart(2,'0')}:${s}]${l.text}`}).join('\n')}
 async function applyLyrics(text){
-  if(!curSong){alert('Toque ou chame uma música primeiro.');return}
+  if(!curSong){kAlert('Toque ou chame uma música primeiro.','Nenhuma música tocando','🎵');return}
   try{localStorage.setItem('kl:'+curSong.id,text)}catch(e){}
   lyr=parseLyrics(text);offset=0;updOffset();syncing=false;lastIdx=-2;renderLyricsStatic();updLyrBtns();renderCatalog();
   store.upsert('catalog',[{id:curSong.id,title:curSong.title,artist:curSong.artist,has_lyrics:true}]).catch(()=>{});
@@ -746,7 +774,7 @@ async function callNext(entry){
   if(busy){toast('Termine a apresentação atual primeiro');return}
   entry=entry||waiting()[0];if(!entry){toast('A fila está vazia');return}
   const song=songs[entry.song_id];
-  if(!song){alert(`A música "${entry.song_title||entry.song_id}" não está carregada neste notebook. Carregue a pasta de músicas.`);return}
+  if(!song){kAlert(`A música "${entry.song_title||entry.song_id}" não está carregada neste notebook.\n\nCarregue a pasta de músicas e chame de novo.`,'Música não encontrada','🎵');return}
   busy=true;current=entry;
   try{await store.update('queue',entry.id,{status:'singing'})}catch(e){}
   await setStage({status:'intro',queue_id:entry.id,voting_until:null});
@@ -911,7 +939,7 @@ $('#nextBtn').onclick=$('#nextBtn2').onclick=()=>callNext();
 $('#endBtn').onclick=()=>{if(busy&&!phaseOpen)finishPerformance();else if(!busy){media.pause();setView('lobby')}};
 $('#skipBtn').onclick=()=>{skipFlag=true};
 $('#homeBtn').onclick=async()=>{
-  if(busy){if(!confirm('Cancelar a apresentação atual? Ela volta para o topo da fila.'))return;
+  if(busy){if(!await kConfirm('A apresentação atual para e a pessoa volta para o topo da fila.',{title:'Cancelar apresentação?',ok:'Cancelar apresentação',cancel:'Continuar cantando',icon:'⏹️',danger:true}))return;
     skipFlag=true;const e=current;try{await store.update('queue',e.id,{status:'waiting',pos:(waiting()[0]?.pos??Date.now())-1})}catch(err){}}
   backToLobby();
 };
