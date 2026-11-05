@@ -19,7 +19,10 @@ window.KARAOKE_CONFIG = {
   SUPABASE_URL: 'https://dmqxuzruxnyaezkmmdpt.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_Gb5Hz3S8QjoQkDGLcHji8g_g4i9gH0u', // chave "publishable"/anon (NUNCA a service_role / secret)
 
-  PESOS: { maquina: 0.60, publico: 0.25, aplausos: 0.15 }, // composição da nota final
+  // Só a máquina conta ponto. Aplausos e votos aparecem na tela só para animar (peso 0).
+  // Se o microfone falhar, a pessoa fica com a nota do público (ou dos aplausos).
+  // Para voltar a misturar: { maquina: 0.60, publico: 0.25, aplausos: 0.15 }
+  PESOS: { maquina: 1, publico: 0, aplausos: 0 },
   SEGUNDOS_VOTACAO: 25,         // 0 desliga a votação do público
   SEGUNDOS_APLAUSO: 6,          // 0 desliga o medidor de aplausos
   APLAUSO_DB_MIN: -50,          // silêncio do salão (ajuste no ensaio)

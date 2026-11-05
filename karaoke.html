@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051400"></script>
+<script src="karaoke-store.js?v=202611051600"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -294,6 +294,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
     <button id="endBtn" title="Encerrar e dar a nota">🏁 Encerrar</button>
     <button id="skipBtn" title="Pular etapa (Enter)">⏭ Pular</button>
     <button id="homeBtn" title="Tela inicial (fila e placar). Clique de novo para voltar à música">🏠</button>
+    <button id="telaBtn" title="Abre o palco numa janela separada para arrastar até a TV">🖥️ Janela TV</button>
     <button id="tvBtn">📺 TV</button>
   </footer>
 </main>
@@ -647,7 +648,9 @@ function renderLobby(){
   $('#topList').innerHTML=tops.length?tops.map(p=>`<li><b>${p.final}</b> · ${esc(p.name)}${chip(p.unit)} <small>${esc(p.song_title||'')}</small></li>`).join(''):'<li class="empty" style="list-style:none;margin-left:-26px">As melhores notas aparecem aqui.</li>';
   const last=[...P].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
   $('#lastBox').innerHTML=last?`<span style="font-size:30px">⭐</span><div><small>Última apresentação</small><div><b>${esc(last.name)}</b>${chip(last.unit)} · nota <b style="color:var(--acc)">${last.final??'—'}</b></div><small>${esc(last.song_title||'')}</small></div>`:`<span style="font-size:30px">🎶</span><div><b>Bem-vindos!</b><div><small>Escolha sua música, chame a galera da sua unidade e solte a voz.</small></div></div>`;
+  const rawNext=$('#nextList').innerHTML,rawTop=$('#topList').innerHTML;
   fitLists();
+  requestAnimationFrame(()=>telaLobby(rawNext,rawTop));
   // sem LINK_CELULAR, mas aberto pelo site publicado: usa o celular.html da mesma pasta
   const LINK=C.LINK_CELULAR||(/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?new URL('./',location.href).href:'');
   if(LINK&&qrDone!==LINK&&window.QRCode){$('#qr').innerHTML='';$('#qr').style.display='';new QRCode($('#qr'),{text:LINK,width:236,height:236,colorDark:'#0b0908',colorLight:'#ffffff'});$('#qrUrl').textContent=LINK.replace(/^https?:\/\//,'').replace(/\/$/,'');qrDone=LINK}
@@ -807,7 +810,11 @@ function computeScore(s){
   const raw=Math.max(0,0.45*timing+0.35*tuning+0.2*stab-pen);
   return{score:Math.round(30+70*raw),timing,tuning,stab,synced};
 }
-function combine(m,p,a){const W=C.PESOS;let tot=0,w=0;[[m,W.maquina],[p,W.publico],[a,W.aplausos]].forEach(([v,k])=>{if(v!=null&&k>0){tot+=v*k;w+=k}});return w?Math.round(tot/w):null}
+function combine(m,p,a){const W=C.PESOS;let tot=0,w=0;[[m,W.maquina],[p,W.publico],[a,W.aplausos]].forEach(([v,k])=>{if(v!=null&&k>0){tot+=v*k;w+=k}});
+  if(w)return Math.round(tot/w);
+  // microfone não deu nota: usa o que tiver (público, depois aplausos) para a pessoa não ficar sem pontos
+  const alt=p??a;return alt!=null?Math.round(alt):null}
+const SO_ANIMA=k=>!(C.PESOS[k]>0);
 
 /* ===================== show: chamar, cantar, notas ===================== */
 let busy=false,phaseOpen=false,skipFlag=false,current=null,votes=[];
@@ -966,7 +973,7 @@ const phrase=s=>{
 const recordeTxt=()=>C.FRASE_RECORDE||'🏆 NOVO RECORDE!';
 const starsHtml=s=>{const n=s==null?0:Math.max(1,Math.min(5,Math.round((s-30)/14)));return `<div class="stars">${[0,1,2,3,4].map(i=>`<span class="${i<n?'lit':''}">★</span>`).join('')}</div>`};
 async function showFinal(e,ps,battle,fA,fB,d,record){
-  const det=(m,ap,pub)=>`<div class="ph-s">🎛️ máquina ${m?.score??'—'} · 👏 aplausos ${ap??'—'} · 📱 público ${pub??'—'}</div>`;
+  const det=(m,ap,pub)=>`<div class="ph-s">🎛️ máquina ${m?.score??'—'} · 👏 aplausos ${ap??'—'} · 📱 público ${pub??'—'}${SO_ANIMA('aplausos')&&SO_ANIMA('publico')&&m?' <span style="opacity:.7">(só a máquina vale ponto)</span>':''}</div>`;
   if(battle){
     const winA=(fA??0)>=(fB??0),win=winA?ps[0]:ps[1],tie=fA===fB;
     showPhase(`<div class="ph-k">🏆 RESULTADO DA BATALHA</div>
@@ -1070,10 +1077,69 @@ $('#offBtn').onclick=async()=>{
   location.reload();
 };
 
+/* ===================== janela separada para a TV ===================== */
+// O som e o controle ficam aqui; a outra janela só mostra o palco (arraste para a TV e dê dois cliques).
+let TW=null,twRaw=['',''];
+const tq=id=>TW&&!TW.closed?TW.document.getElementById(id):null;
+function morph(src,dst){
+  if(src.nodeType!==dst.nodeType||src.nodeName!==dst.nodeName){dst.replaceWith(dst.ownerDocument.importNode(src,true));return}
+  if(src.nodeType===3){if(dst.data!==src.data)dst.data=src.data;return}
+  if(src.nodeType!==1)return;
+  for(const a of [...dst.attributes])if(!src.hasAttribute(a.name))dst.removeAttribute(a.name);
+  for(const a of src.attributes)if(dst.getAttribute(a.name)!==a.value)dst.setAttribute(a.name,a.value);
+  const sc=src.childNodes,dc=dst.childNodes;
+  while(dc.length>sc.length)dst.lastChild.remove();
+  for(let i=0;i<sc.length;i++){if(i<dc.length)morph(sc[i],dc[i]);else dst.appendChild(dst.ownerDocument.importNode(sc[i],true))}
+}
+const MIRROR=['lyrics','singerBar','tLeft','intro','phase','roleta','confetti'];
+function telaTick(){
+  if(!TW)return;if(TW.closed){TW=null;$('#telaBtn').classList.remove('on');return}
+  const d=TW.document;if(!d.body)return;
+  if(d.body.dataset.view!==document.body.dataset.view)d.body.dataset.view=document.body.dataset.view||'';
+  const st=d.getElementById('stage');if(st&&st.className!==$('#stage').className)st.className=$('#stage').className;
+  for(const id of MIRROR){const a=document.getElementById(id),b=d.getElementById(id);if(a&&b)morph(a,b)}
+  const v=d.getElementById('media');if(v){const show=media.classList.contains('show');v.classList.toggle('show',show);
+    if(show&&!v.srcObject&&media.captureStream){try{v.srcObject=media.captureStream();v.muted=true;v.play().catch(()=>{})}catch(e){}}
+    if(!show&&v.srcObject)v.srcObject=null}
+}
+function telaLobby(rawNext,rawTop){
+  if(rawNext!=null)twRaw=[rawNext,rawTop];
+  const lb=tq('lobby');if(!lb)return;
+  lb.innerHTML=$('#lobby').innerHTML;
+  tq('nextList').innerHTML=twRaw[0];tq('topList').innerHTML=twRaw[1];
+  const tl=tq('topList'),th=tq('topH');tl.style.display=th.style.display='';
+  fitList(tq('nextBox'),tq('nextList'),waiting().length,h=>'+ '+h+' na fila');
+  fitList(tl,tl,0,null);
+  if(tl.clientHeight<48&&tl.querySelector('li:not(.empty)'))tl.style.display=th.style.display='none';
+}
+function openTela(){
+  if(TW&&!TW.closed){TW.focus();return}
+  TW=window.open('','karaokeTela','popup=yes,width=1280,height=720');
+  if(!TW){kAlert('O Chrome bloqueou a janela. Clique no ícone de janela bloqueada na barra de endereço e escolha "Sempre permitir".','Janela bloqueada','🖥️');return}
+  const d=TW.document,head=[...document.querySelectorAll('link[rel=stylesheet],link[rel=icon],style')].map(e=>e.outerHTML).join('');
+  d.open();d.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><base href="'+esc(location.href)+'"><title>Telão · Karaokê</title>'+head+
+    '<style>html,body{height:100%}body{display:block!important;cursor:none}main{height:100vh;display:flex;flex-direction:column}#syncBar,.cardBtns,.ov button{display:none!important}#twHint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99;background:rgba(22,18,16,.95);border:1px solid var(--acc);border-radius:12px;padding:12px 20px;font-size:18px;transition:opacity .6s}</style></head><body></body></html>');
+  d.close();
+  d.body.innerHTML='<main>'+$('#stage').outerHTML+'</main>'+MIRROR.filter(id=>!$('#stage').contains($('#'+id))).map(id=>$('#'+id).outerHTML).join('')+
+    '<div id="twHint">Arraste esta janela para a TV e dê <b>dois cliques</b> para tela cheia</div>';
+  const v=d.getElementById('media');if(v){v.removeAttribute('src');v.muted=true}
+  d.addEventListener('dblclick',()=>{d.fullscreenElement?d.exitFullscreen():d.documentElement.requestFullscreen().catch(()=>{})});
+  d.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='t'||e.key==='F11'){e.preventDefault();d.fullscreenElement?d.exitFullscreen():d.documentElement.requestFullscreen().catch(()=>{});return}document.dispatchEvent(new KeyboardEvent('keydown',{key:e.key,code:e.code,bubbles:true}));if(e.code==='Space')e.preventDefault()});
+  TW.addEventListener('resize',()=>{clearTimeout(openTela.t);openTela.t=setTimeout(()=>telaLobby(),150)});
+  setTimeout(()=>{const h=d.getElementById('twHint');if(h){h.style.opacity=0;setTimeout(()=>h.remove(),700)}},9000);
+  $('#telaBtn').classList.add('on');
+  telaLobby();telaTick();
+  toast('Janela da TV aberta: arraste até a TV e dê dois cliques nela');
+}
+$('#telaBtn').onclick=openTela;
+addEventListener('beforeunload',()=>{try{TW&&TW.close()}catch(e){}});
+
 /* loop */
-function frame(){
-  requestAnimationFrame(frame);
-  scoreTick();
+// com a janela de controle minimizada o Chrome pausa o requestAnimationFrame: um timer mantém a letra da TV andando
+setInterval(()=>{if(document.hidden)step()},40);
+function frame(){requestAnimationFrame(frame);step()}
+function step(){
+  scoreTick();telaTick();
   mics.forEach((m,i)=>{if(!m)return;m.raw.getFloatTimeDomainData(m.rbuf);let s=0;for(const x of m.rbuf)s+=x*x;$('#meter'+(i+1)).style.width=Math.min(100,Math.sqrt(s/m.rbuf.length)*300)+'%'});
   tickLimit();
   if(media.src){$('#time').textContent=fmt(media.currentTime)+' / '+fmt(media.duration||0);if(!seeking)$('#seek').value=media.currentTime}
