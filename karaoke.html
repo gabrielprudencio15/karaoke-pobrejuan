@@ -98,6 +98,10 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 #nextList li{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
 #nextList .n{font-family:"Bebas Neue",Impact,sans-serif;font-size:36px;color:var(--dim);width:40px;text-align:center}
 #nextList li:first-child .n{color:var(--acc)}
+#nextList li.more{justify-content:center;color:var(--acc);font-weight:800;font-size:19px;border-bottom:0;padding-top:12px}
+.box.board{display:flex;flex-direction:column}
+.box.board #topList{flex:1;min-height:0;overflow:hidden}
+@media (max-height:820px){#lobby{padding:16px 28px;gap:12px}.brand img{height:60px}.brand .ev{font-size:20px}.box{padding:12px 20px}.box h3{font-size:24px;margin-bottom:4px}#nextList li{padding:6px 0}#nextList .n{font-size:30px}#nextList .who{font-size:20px}#nextList .song{font-size:13px}.ub{margin:6px 0}.ub .top{font-size:19px}.ub .medal{font-size:20px}.ub .track{height:12px;margin-top:3px}.ub small{font-size:12px;margin-top:2px}#topH{margin-top:6px!important}#topList{font-size:15px}#topList li{margin:3px 0}#qr img,#qr canvas{width:96px;height:96px}.qrBox b{font-size:19px}.nowBox{font-size:16px}}
 #nextList .who{font-size:23px;font-weight:800}
 #nextList .song{color:var(--dim);font-size:15px;margin-top:2px}
 .empty{color:var(--dim);font-size:18px;padding:20px 0}
@@ -268,9 +272,9 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
     <div id="lobby">
       <div class="brand"><div id="brandLogo"></div><div><div class="ev" id="brandEv"></div><div class="tag">🎤 Karaokê das Unidades</div></div></div>
       <div class="lobbyGrid">
-        <section class="box"><h3>Próximos no palco</h3><ol id="nextList"></ol></section>
-        <section class="box"><h3>Placar das unidades</h3><div id="unitBoard"></div>
-          <h3 style="margin-top:14px">Destaques da noite</h3><ol id="topList"></ol></section>
+        <section class="box" id="nextBox"><h3>Próximos no palco</h3><ol id="nextList"></ol></section>
+        <section class="box board"><h3>Placar das unidades</h3><div id="unitBoard"></div>
+          <h3 id="topH" style="margin-top:14px">Destaques da noite</h3><ol id="topList"></ol></section>
       </div>
       <div class="lobbyFoot">
         <div class="qrBox" id="qrBox"><div id="qr"></div><div><b>Entre na fila pelo celular</b><small id="qrUrl"></small></div></div>
@@ -614,17 +618,36 @@ function unitStats(){
   }).sort((a,b)=>C.RANKING_UNIDADES==='soma'?(b.sum-a.sum):((b.avg-a.avg)||(b.count-a.count)));
 }
 let qrDone='';
+// Mostra só o que cabe na tela; o resto vira "+ N na fila"
+function fitList(box,list,total,more){
+  const over=()=>box.scrollHeight>box.clientHeight+1;
+  if(!box.clientHeight)return;
+  const items=[...list.querySelectorAll('li:not(.more):not(.empty)')];
+  let li=null;
+  const tag=()=>{const h=total-items.length;if(!more||h<=0){li&&li.remove();li=null;return}
+    if(!li){li=document.createElement('li');li.className='more';list.appendChild(li)}li.textContent=more(h)};
+  while(items.length>1&&over()){items.pop().remove();tag()}
+  tag();while(items.length>1&&over()){items.pop().remove();tag()}
+}
+function fitLists(){
+  fitList($('#nextBox'),$('#nextList'),waiting().length,h=>'+ '+h+' na fila');
+  const tl=$('#topList'),th=$('#topH');tl.style.display=th.style.display='';
+  fitList(tl,tl,0,null);
+  if(tl.clientHeight<48&&tl.querySelector('li:not(.empty)')){tl.style.display=th.style.display='none'}
+}
+addEventListener('resize',()=>{clearTimeout(fitLists.t);fitLists.t=setTimeout(renderLobby,150)});
 function renderLobby(){
-  const w=waiting().slice(0,6);
+  const w=waiting().slice(0,15);
   $('#nextList').innerHTML=w.length?w.map((x,i)=>`<li><span class="n">${i+1}</span><div><div class="who">${esc(x.name)}${chip(x.unit)}${x.partner?` <span style="color:var(--dim)">&</span> ${esc(x.partner)}${chip(x.partner_unit||x.unit)}`:''}</div>
     <div class="song">${MODE[x.mode]||''} · ${esc(x.song_title)}</div></div></li>`).join(''):'<li class="empty">Ninguém na fila ainda. Escaneie o QR Code e seja o primeiro! 🎤</li>';
   const us=unitStats(),soma=C.RANKING_UNIDADES==='soma',max=Math.max(1,...us.map(u=>soma?u.sum:u.avg)),medal=['🥇','🥈','🥉'];
   $('#unitBoard').innerHTML=us.map((u,i)=>`<div class="ub"><div class="top"><span><span class="medal">${u.count?medal[i]||'':''}</span>${esc(u.nome)}</span><span>${soma?u.sum.toLocaleString('pt-BR')+' pts':(u.count?u.avg:'—')}</span></div>
     <div class="track"><div class="fill" style="width:${(soma?u.sum:u.avg)/max*100}%;background:${u.cor}"></div></div><small>${u.count} apresentaç${u.count===1?'ão':'ões'}${soma?'':' · média'}</small></div>`).join('');
-  const tops=[...P].filter(p=>p.final!=null).sort((a,b)=>b.final-a.final).slice(0,5);
+  const tops=[...P].filter(p=>p.final!=null).sort((a,b)=>b.final-a.final).slice(0,8);
   $('#topList').innerHTML=tops.length?tops.map(p=>`<li><b>${p.final}</b> · ${esc(p.name)}${chip(p.unit)} <small>${esc(p.song_title||'')}</small></li>`).join(''):'<li class="empty" style="list-style:none;margin-left:-26px">As melhores notas aparecem aqui.</li>';
   const last=[...P].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
   $('#lastBox').innerHTML=last?`<span style="font-size:30px">⭐</span><div><small>Última apresentação</small><div><b>${esc(last.name)}</b>${chip(last.unit)} · nota <b style="color:var(--acc)">${last.final??'—'}</b></div><small>${esc(last.song_title||'')}</small></div>`:`<span style="font-size:30px">🎶</span><div><b>Bem-vindos!</b><div><small>Escolha sua música, chame a galera da sua unidade e solte a voz.</small></div></div>`;
+  fitLists();
   // sem LINK_CELULAR, mas aberto pelo site publicado: usa o celular.html da mesma pasta
   const LINK=C.LINK_CELULAR||(/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?new URL('./',location.href).href:'');
   if(LINK&&qrDone!==LINK&&window.QRCode){$('#qr').innerHTML='';$('#qr').style.display='';new QRCode($('#qr'),{text:LINK,width:236,height:236,colorDark:'#0b0908',colorLight:'#ffffff'});$('#qrUrl').textContent=LINK.replace(/^https?:\/\//,'').replace(/\/$/,'');qrDone=LINK}
@@ -637,7 +660,7 @@ $('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos
 
 /* ===================== música e letra ===================== */
 let lyr={synced:false,lines:[]},offset=0,syncing=false,syncIdx=0,syncBackup=null,lastIdx=-2,curEl=null,cdEl=null,seeking=false;
-function setView(v){document.body.dataset.view=v;if(v==='lobby'){media.classList.remove('show');$('#title').textContent='Telão'}}
+function setView(v){document.body.dataset.view=v;if(v==='lobby'){media.classList.remove('show');requestAnimationFrame(renderLobby);$('#title').textContent='Telão'}}
 async function loadSongFor(song){
   curSong=song;if(media.src)URL.revokeObjectURL(media.src);
   media.src=URL.createObjectURL(song.file);$('#title').textContent=songLabel(song);
