@@ -170,7 +170,11 @@ window.KARAOKE_CONFIG = {
 
   let store;
   const wantsOnline = !!(C.SUPABASE_URL && C.SUPABASE_ANON_KEY);
-  if (wantsOnline && window.supabase) {
+  let forcedOffline = false;
+  try { forcedOffline = localStorage.getItem('k_offline') === '1'; } catch (e) {}
+  if (wantsOnline && forcedOffline) {
+    store = new LocalStore(); // "modo sem internet" ligado no telão (botão na barra lateral)
+  } else if (wantsOnline && window.supabase) {
     try { store = new SupabaseStore(C.SUPABASE_URL.replace(/\/+$/, ''), C.SUPABASE_ANON_KEY); }
     catch (e) { console.error('Supabase falhou, usando modo local', e); store = new LocalStore(); }
   } else {
@@ -178,6 +182,7 @@ window.KARAOKE_CONFIG = {
     store = new LocalStore();
   }
   store.wantsOnline = wantsOnline;
+  store.forcedOffline = wantsOnline && forcedOffline;
 
   store.deviceId = () => {
     let d = localStorage.getItem('k_device');

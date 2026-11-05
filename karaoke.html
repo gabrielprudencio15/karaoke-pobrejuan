@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051130"></script>
+<script src="karaoke-store.js?v=202611051400"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -22,6 +22,9 @@ select option{background:var(--panel2);color:var(--txt)}
 body{margin:0;background:radial-gradient(1400px 700px at 70% -20%,var(--glow),var(--bg));color:var(--txt);font-family:Montserrat,system-ui,"Segoe UI",sans-serif;height:100vh;display:grid;grid-template-columns:340px 1fr;overflow:hidden}
 body.tv{grid-template-columns:1fr}
 body.tv aside{display:none}
+#tLeft{position:absolute;top:14px;right:22px;z-index:4;font-family:"Bebas Neue",Impact,sans-serif;font-size:40px;color:var(--acc);background:rgba(22,18,16,.9);border:1px solid var(--acc);border-radius:12px;padding:2px 14px;display:none}
+#tLeft.show{display:block}
+body[data-view=lobby] #tLeft{display:none!important}
 .disp{font-family:"Bebas Neue",Impact,sans-serif;letter-spacing:1px;font-weight:400}
 aside{background:var(--panel);border-right:1px solid var(--line);padding:16px;overflow:auto}
 main{display:flex;flex-direction:column;min-width:0;min-height:0}
@@ -178,7 +181,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <aside>
   <div class="sideHead"><span class="disp" id="sideBrand"></span><small>Karaokê · controle</small></div>
   <div class="status" id="storeStatus"></div>
-  <small>Espaço: tocar/pausar · ←/→: 5s · Enter: pular etapa · T: modo TV</small>
+  <small>Espaço: tocar/pausar · ←/→: 5s · Enter: pular etapa · T: modo TV · I: pular intro</small>
 
   <h2>Músicas</h2>
   <button id="folderBtn" class="full pri">📂 Escolher pasta de músicas</button>
@@ -222,6 +225,9 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <h2>Música</h2>
   <label class="sl">Volume <input id="music" type="range" min="0" max="100"><span id="musicV"></span></label>
   <button id="vocal" class="full">🗣️ Remover voz original</button>
+  <div class="row" style="margin-top:8px"><select id="limitSel"><option value="0">Sem limite de tempo</option><option value="150">Máx. 2:30 por música</option><option value="180">Máx. 3:00 por música</option><option value="210">Máx. 3:30 por música</option><option value="240">Máx. 4:00 por música</option></select></div>
+  <label class="chk"><input type="checkbox" id="autoIntro"> ⏩ Pular introdução sozinho</label>
+  <small>Vale para quem foi chamado pela fila. Nos últimos 20 s aparece um relógio, a música abaixa e a nota sai sozinha.</small>
 
   <h2>Microfones</h2>
   <div class="row"><select id="mic1Sel"><option value="">Mic 1: padrão</option></select></div>
@@ -243,12 +249,14 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <h2>Placar</h2>
   <div class="row"><button id="testCel">📱 Abrir celular (teste)</button><button id="resetAll" class="warn">Zerar noite</button></div>
   <small>Zerar apaga fila, votos e notas (para ensaio).</small>
+  <button id="offBtn" class="full" style="margin-top:8px">📴 Internet caiu? Modo sem internet</button>
 </aside>
 
 <main>
   <div id="stage">
     <video id="media" playsinline></video>
     <div id="singerBar"></div>
+    <div id="tLeft"></div>
     <div id="lyrics" class="empty"></div>
     <div id="syncBar">
       <span>Aperte <b>ENTER</b> quando cada linha começar</span>
@@ -278,6 +286,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
     <span id="time">0:00 / 0:00</span>
     <span id="liveNote" class="hint" title="Nota do mic 1 (verde = afinado)">🎵 —</span>
     <button id="nextBtn" class="pri">▶ Próximo</button>
+    <button id="introBtn" title="Pular a introdução (I)" style="display:none">⏩ Intro</button>
     <button id="endBtn" title="Encerrar e dar a nota">🏁 Encerrar</button>
     <button id="skipBtn" title="Pular etapa (Enter)">⏭ Pular</button>
     <button id="homeBtn" title="Tela inicial (fila e placar). Clique de novo para voltar à música">🏠</button>
@@ -326,8 +335,8 @@ document.title='Karaokê · '+C.MARCA;
 $('#sideBrand').textContent=C.MARCA;
 $('#brandLogo').innerHTML=C.LOGO_URL?`<img src="${esc(C.LOGO_URL)}" alt="${esc(C.MARCA)}">`:`<div class="logo">${esc(C.MARCA)}</div>`;
 $('#brandEv').textContent=C.EVENTO;
-store.onStatus(s=>{$('#storeStatus').innerHTML=
-  s==='online'?'🟢 Online (Supabase): celulares conectados'
+store.onStatus(s=>{$('#storeStatus').innerHTML=store.forcedOffline?'📴 Modo sem internet: fila pelo notebook, sem votação dos celulares'
+  :s==='online'?'🟢 Online (Supabase): celulares conectados'
   :s==='connecting'?'⏳ Conectando ao Supabase...'
   :s==='offline'?'🔴 Sem conexão com o Supabase: tentando reconectar. O som continua.'
   :store.wantsOnline?'🔴 Supabase não carregou (sem internet?). Rodando em modo local.'
@@ -337,7 +346,7 @@ $('#addUnit').innerHTML=unitOpts;$('#addPUnit').innerHTML=unitOpts;
 $('#addMode').onchange=()=>$('#partnerRow').style.display=$('#addMode').value==='solo'?'none':'';
 
 /* ===================== áudio ===================== */
-let ctx,master,recDest,musicGain,direct,vrGain,micIn,micVol,micOut,dryGain,recVoice,echoWet,fb,revWet,monitorOn=true;
+let fadeGain,ctx,master,recDest,musicGain,direct,vrGain,micIn,micVol,micOut,dryGain,recVoice,echoWet,fb,revWet,monitorOn=true;
 const mics=[null,null];
 [['music',80],['mic',70],['echo',15],['reverb',30]].forEach(([id,d])=>{
   const el=$('#'+id),out=$('#'+id+'V');el.value=S[id]??d;out.textContent=el.value;
@@ -353,7 +362,7 @@ function ensureCtx(){
   master=ctx.createGain();master.connect(ctx.destination);
   recDest=ctx.createMediaStreamDestination();master.connect(recDest);
   const src=ctx.createMediaElementSource(media);
-  musicGain=ctx.createGain();musicGain.connect(master);
+  musicGain=ctx.createGain();fadeGain=ctx.createGain();musicGain.connect(fadeGain);fadeGain.connect(master);
   direct=ctx.createGain();src.connect(direct);direct.connect(musicGain);
   vrGain=ctx.createGain();vrGain.connect(musicGain);
   const split=ctx.createChannelSplitter(2),inv=ctx.createGain(),side=ctx.createGain();
@@ -548,10 +557,21 @@ async function writeLrc(id,text){
 /* ===================== fila e placar ===================== */
 let Q=[],P=[],STAGE={id:'main',status:'lobby',queue_id:null,voting_until:null};
 const waiting=()=>Q.filter(x=>x.status==='waiting').sort((a,b)=>a.pos-b.pos);
+const NO_NET=store.wantsOnline&&store.mode==='local';
+let syncBack=store.mode==='supabase'&&localStorage.getItem('k_syncBack')==='1';
+async function doSyncBack(){
+  try{const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}};
+    const q=rd('ks:queue'),p=rd('ks:performances');
+    if(q.length)await store.upsert('queue',q);if(p.length)await store.upsert('performances',p);
+    localStorage.removeItem('k_syncBack');syncBack=false;toast('✅ De volta online: '+p.length+' nota(s) do modo sem internet enviadas')}
+  catch(e){console.error(e);toast('Ainda sem conexão para enviar as notas. Tento de novo em 20 s.')}
+}
 async function refresh(t){
+  if(syncBack){await doSyncBack();if(syncBack){renderQueue();renderLobby();return}t=null}
   try{
     if(!t||t==='queue')Q=await store.list('queue');
     if(!t||t==='performances')P=await store.list('performances');
+    if(store.mode==='supabase'){try{localStorage.setItem('ks:queue',JSON.stringify(Q));localStorage.setItem('ks:performances',JSON.stringify(P))}catch(e){}}
   }catch(e){console.error(e)}
   renderQueue();renderLobby();
 }
@@ -608,6 +628,7 @@ function renderLobby(){
   // sem LINK_CELULAR, mas aberto pelo site publicado: usa o celular.html da mesma pasta
   const LINK=C.LINK_CELULAR||(/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?new URL('./',location.href).href:'');
   if(LINK&&qrDone!==LINK&&window.QRCode){$('#qr').innerHTML='';$('#qr').style.display='';new QRCode($('#qr'),{text:LINK,width:236,height:236,colorDark:'#0b0908',colorLight:'#ffffff'});$('#qrUrl').textContent=LINK.replace(/^https?:\/\//,'').replace(/\/$/,'');qrDone=LINK}
+  if(NO_NET){$('#qrBox').innerHTML='<div style="font-size:40px">📴</div><div><b>Hoje a fila é pelo DJ</b><small>Peça sua música no notebook do karaokê</small></div>';return}
   if(!LINK){$('#qr').style.display='none';$('#qrUrl').textContent='(o QR Code aparece quando o site estiver publicado)'}
 }
 $('#testCel').onclick=()=>window.open('celular.html','_blank');
@@ -791,7 +812,9 @@ async function callNext(entry){
   $('#intro').classList.add('show');phaseOpen=true;
   await wait(5000,(k,el)=>{$('#inCd').textContent=Math.max(1,Math.ceil(5-el/1000))});
   $('#intro').classList.remove('show');phaseOpen=false;
-  renderSingerBar(entry);setView('sing');await setStage({status:'singing'});media.currentTime=0;play();
+  renderSingerBar(entry);setView('sing');await setStage({status:'singing'});media.currentTime=0;
+  if(S.autoIntro){if(media.readyState<1)await Promise.race([new Promise(r=>media.addEventListener('loadedmetadata',r,{once:true})),new Promise(r=>setTimeout(r,1500))]);skipIntro(true)}
+  startLimit();play();
 }
 
 async function finishPerformance(){
@@ -823,7 +846,7 @@ async function finishPerformance(){
 
   /* 3) votação do público */
   let pubA=null,pubB=null,nVotes=0;
-  if(C.SEGUNDOS_VOTACAO>0){const t=await runVoting(e,battle,ps);pubA=t.a;pubB=t.b;nVotes=t.n}
+  if(C.SEGUNDOS_VOTACAO>0&&!NO_NET){const t=await runVoting(e,battle,ps);pubA=t.a;pubB=t.b;nVotes=t.n}
 
   /* 4) nota final */
   const fA=combine(mA?.score??null,pubA,aA);
@@ -972,6 +995,7 @@ document.addEventListener('keydown',e=>{
   const tag=e.target.tagName,typing=(tag==='INPUT'&&!['range','checkbox','button','file'].includes(e.target.type))||tag==='TEXTAREA';
   if(typing){if(e.key==='Escape')e.target.blur();return}
   if(e.key.toLowerCase()==='t'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();toggleTV();return}
+  if(e.key.toLowerCase()==='i'&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!phaseOpen){e.preventDefault();if(!skipIntro())toast('Sem introdução para pular');return}
   if(tag==='SELECT')return;
   if(phaseOpen){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();skipFlag=true}return}
   if(e.code==='Space'){e.preventDefault();togglePlay()}
@@ -982,11 +1006,46 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowLeft'){e.preventDefault();media.currentTime-=5}
 });
 
+/* ===================== limite de tempo e introdução ===================== */
+let singStart=0,limitHit=false,fading=false;
+$('#limitSel').value=String(S.limit??180);
+$('#limitSel').onchange=()=>{S.limit=+$('#limitSel').value;save()};
+$('#autoIntro').checked=!!S.autoIntro;
+$('#autoIntro').onchange=()=>{S.autoIntro=$('#autoIntro').checked;save()};
+function introEnd(){if(!lyr.synced||!lyr.lines.length)return 0;const f=lyr.lines.find(l=>l.text&&l.t!=null);return f?f.t-offset-3:0}
+function skipIntro(quiet){const t=introEnd();if(t>media.currentTime+2){media.currentTime=t;if(busy)singStart=t;if(!quiet)toast('⏩ Introdução pulada');return true}return false}
+$('#introBtn').onclick=()=>{if(!skipIntro())toast('Sem introdução para pular')};
+function unfade(){fading=false;if(fadeGain){fadeGain.gain.cancelScheduledValues(0);fadeGain.gain.value=1}}
+function startLimit(){singStart=media.currentTime;limitHit=false;unfade()}
+function tickLimit(){
+  const el=$('#tLeft'),lim=+(S.limit??180);
+  $('#introBtn').style.display=(media.src&&!phaseOpen&&!syncing&&document.body.dataset.view!=='lobby'&&introEnd()>media.currentTime+2)?'':'none';
+  if(!busy||!lim||phaseOpen||!media.src||limitHit){el.classList.remove('show');return}
+  const left=lim-(media.currentTime-singStart);
+  if(left<=20){el.textContent='⏱ '+Math.max(0,Math.ceil(left))+'s';el.classList.add('show')}else el.classList.remove('show');
+  if(left<=4&&!fading&&!media.paused&&fadeGain){fading=true;fadeGain.gain.setTargetAtTime(0,ctx.currentTime,1.1)}
+  else if(left>4&&fading)unfade();
+  if(left<=0){limitHit=true;el.classList.remove('show');finishPerformance().finally(unfade)}
+}
+$('#offBtn').textContent=store.forcedOffline?'📶 Internet voltou? Voltar para online':'📴 Internet caiu? Modo sem internet';
+$('#offBtn').onclick=async()=>{
+  if(busy){toast('Termine a apresentação atual primeiro');return}
+  if(store.forcedOffline){
+    if(!await kConfirm('O telão volta a usar a internet e envia para o Supabase as notas feitas no modo sem internet. Os celulares voltam a funcionar.',{title:'Voltar para online?',ok:'Voltar online',icon:'📶'}))return;
+    try{localStorage.removeItem('k_offline');localStorage.setItem('k_syncBack','1')}catch(e){}
+  }else{
+    if(!await kConfirm('Os celulares param de funcionar. A fila passa a ser feita aqui no notebook (Adicionar à fila), sem votação do público: a nota vira máquina + aplausos. A fila e o placar atuais continuam. Quando a internet voltar, clique de novo neste botão.',{title:'Mudar para modo sem internet?',ok:'Mudar agora',icon:'📴'}))return;
+    try{localStorage.setItem('k_offline','1')}catch(e){}
+  }
+  location.reload();
+};
+
 /* loop */
 function frame(){
   requestAnimationFrame(frame);
   scoreTick();
   mics.forEach((m,i)=>{if(!m)return;m.raw.getFloatTimeDomainData(m.rbuf);let s=0;for(const x of m.rbuf)s+=x*x;$('#meter'+(i+1)).style.width=Math.min(100,Math.sqrt(s/m.rbuf.length)*300)+'%'});
+  tickLimit();
   if(media.src){$('#time').textContent=fmt(media.currentTime)+' / '+fmt(media.duration||0);if(!seeking)$('#seek').value=media.currentTime}
   if(!lyr.synced||syncing||!lyr.lines.length)return;
   const t=media.currentTime+offset,L=lyr.lines;let i=-1;
