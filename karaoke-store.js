@@ -18,6 +18,7 @@ window.KARAOKE_CONFIG = {
   LINK_CELULAR: 'https://gabrielprudencio15.github.io/karaoke-pobrejuan/', // site publicado (vira o QR Code do telão)
   SUPABASE_URL: 'https://dmqxuzruxnyaezkmmdpt.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_Gb5Hz3S8QjoQkDGLcHji8g_g4i9gH0u', // chave "publishable"/anon (NUNCA a service_role / secret)
+  TELAO_EMAIL: 'karaoke-telao@pobrejuan.com.br', // usuário do telão no Supabase (a senha você cria lá; nunca coloque a senha aqui)
 
   // Só a máquina conta ponto. Aplausos e votos aparecem na tela só para animar (peso 0).
   // Se o microfone falhar, a pessoa fica com a nota do público (ou dos aplausos).
@@ -105,8 +106,16 @@ window.KARAOKE_CONFIG = {
       this.status = 'connecting';
       this.statusSubs = [];
       this.nCh = 0;
-      this.sb = window.supabase.createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      // A sessão só existe no telão (login com a senha do telão). Celulares ficam anônimos.
+      this.sb = window.supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'karaoke-telao-auth' } });
     }
+    // ---- login do telão (usuário criado no Supabase: Authentication > Users) ----
+    async isAdmin() { try { const { data } = await this.sb.auth.getSession(); return !!data.session; } catch (e) { return false; } }
+    async signIn(password) {
+      const { error } = await this.sb.auth.signInWithPassword({ email: C.TELAO_EMAIL, password });
+      if (error) throw error;
+    }
+    async signOut() { await this.sb.auth.signOut(); }
     T(t) { return 'karaoke_' + t; }
     _setStatus(s) { if (s === this.status) return; this.status = s; this.statusSubs.forEach(f => { try { f(s); } catch (e) {} }); }
     onStatus(fn) { this.statusSubs.push(fn); fn(this.status); }
@@ -185,6 +194,14 @@ window.KARAOKE_CONFIG = {
     store = new LocalStore();
   }
   store.wantsOnline = wantsOnline;
+  if (!store.isAdmin) { store.isAdmin = async () => true; store.signIn = async () => {}; store.signOut = async () => {}; }
+
+  // Sugestões: cada envio tem um "batch"; reenviar cria um batch novo e só o último de cada celular conta.
+  store.latestSugestoes = rows => {
+    const last = new Map();
+    for (const r of rows) { const l = last.get(r.device_id); if (!l || String(r.created_at) > String(l.created_at)) last.set(r.device_id, r); }
+    return rows.filter(r => (r.batch || '') === (last.get(r.device_id).batch || ''));
+  };
   store.forcedOffline = wantsOnline && forcedOffline;
 
   store.deviceId = () => {

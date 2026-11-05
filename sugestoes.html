@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051600"></script>
+<script src="karaoke-store.js?v=202611051800"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -168,9 +168,14 @@ $('#send').onclick=async()=>{
   const name=$('#name').value.trim();
   $('#send').disabled=true;$('#send').textContent='Enviando...';
   try{
-    if(saved.ids&&saved.ids.length)await store.removeMany('sugestoes',saved.ids);
-    const ids=[];
-    for(const s of picked){const r=await store.insert('sugestoes',{device_id:dev,name:name||null,unit,artist:s.artist||null,title:s.title,song_key:keyOf(s.artist,s.title)});ids.push(r.id)}
+    // reenviar cria um lote novo; só o último lote de cada celular conta no resultado
+    const ids=[],batch=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+    let useBatch=true;
+    for(const s of picked){const row={device_id:dev,name:name||null,unit,artist:s.artist||null,title:s.title,song_key:keyOf(s.artist,s.title)};let r;
+      try{r=await store.insert('sugestoes',useBatch?{...row,batch}:row)}
+      catch(err){if(!useBatch||!/batch/i.test(err.message||''))throw err;useBatch=false;r=await store.insert('sugestoes',row)} // banco ainda sem a coluna batch
+      ids.push(r.id)}
+    if(!useBatch&&saved.ids&&saved.ids.length)try{await store.removeMany('sugestoes',saved.ids)}catch(err){}
     saved={unit,name,songs:picked,ids};localStorage.setItem('k_sug',JSON.stringify(saved));
     showThanks();
   }catch(e){console.error(e);toast('Não deu para enviar. Verifique a internet e tente de novo.')}
@@ -182,7 +187,7 @@ async function showThanks(){
   $('#tName').textContent=saved.name?', '+saved.name.split(' ')[0]:'';
   $('#top').innerHTML='<li><span class="t dim">Carregando...</span></li>';
   try{
-    const all=await store.list('sugestoes'),m=new Map();
+    const all=store.latestSugestoes(await store.list('sugestoes')),m=new Map();
     for(const r of all){const g=m.get(r.song_key)||{artist:r.artist,title:r.title,n:0};g.n++;m.set(r.song_key,g)}
     const top=[...m.values()].sort((a,b)=>b.n-a.n||a.title.localeCompare(b.title,'pt')).slice(0,10);
     $('#top').innerHTML=top.map(s=>`<li><span class="t"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}</small></span><span class="c">${s.n} ${s.n===1?'voto':'votos'}</span></li>`).join('')||'<li><span class="t dim">Você foi o primeiro!</span></li>';

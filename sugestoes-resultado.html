@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051600"></script>
+<script src="karaoke-store.js?v=202611051800"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -101,7 +101,7 @@ function render(){
     list.map((s,i)=>`<div class="row"><span class="n">${i+1}</span><span class="t"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span><span class="mixc"><span class="mix">${UNITS.map(u=>s.units[u.id]?`<i style="width:${s.units[u.id]/s.n*100}%;background:${u.cor}" title="${esc(u.nome)}: ${s.units[u.id]}"></i>`:'').join('')}</span></span><span class="c">${s.n}</span></div>`).join('')
     :`<div class="empty">${ROWS.length?'Nada encontrado com esse filtro.':'Ninguém respondeu ainda. Compartilhe o link do formulário! 🎤'}</div>`;
 }
-async function load(){try{ROWS=await store.list('sugestoes');render()}catch(e){console.error(e);$('#tbl').innerHTML='<div class="empty">Não deu para carregar. Verifique a internet.</div>'}}
+async function load(){try{ROWS=store.latestSugestoes(await store.list('sugestoes'));render()}catch(e){console.error(e);$('#tbl').innerHTML='<div class="empty">Não deu para carregar. Verifique a internet.</div>'}}
 setInterval(load,30000);load();
 
 $('#csv').onclick=()=>{

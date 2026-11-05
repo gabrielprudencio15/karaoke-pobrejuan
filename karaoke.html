@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051600"></script>
+<script src="karaoke-store.js?v=202611051800"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -178,6 +178,15 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 .kb button{flex:1;max-width:210px;padding:11px 14px;font-weight:700;font-size:15px}
 .kb button.pri.danger{background:var(--acc2);border-color:var(--acc2);color:#fff}
 @keyframes kfade{from{opacity:0}}
+.kbox input[type=password]{width:100%;margin:14px 0 4px;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;font-size:16px;outline:none;text-align:center}
+.kbox input[type=password]:focus{border-color:var(--acc)}
+.kerr{color:#ff7a7a;font-size:13px;min-height:18px}
+#checklist summary{font-size:14px;color:var(--txt);font-weight:700;padding:10px;border:1px solid var(--acc);border-radius:8px;background:var(--glow);list-style:none}
+#checklist summary::-webkit-details-marker{display:none}
+#checklist .grp{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--acc);margin:14px 0 4px}
+#checklist label{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:6px 4px;cursor:pointer;line-height:1.35;border-bottom:1px solid var(--line)}
+#checklist label input{accent-color:var(--acc);width:16px;height:16px;flex:0 0 auto;margin-top:1px}
+#checklist label.ok span{color:var(--dim);text-decoration:line-through}
 @keyframes kpop{from{transform:scale(.92);opacity:0}}
 </style>
 </head>
@@ -185,6 +194,8 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <aside>
   <div class="sideHead"><span class="disp" id="sideBrand"></span><small>Karaokê · controle</small></div>
   <div class="status" id="storeStatus"></div>
+  <details id="checklist"><summary id="ckSum">✅ Checklist da festa</summary><div id="ckList"></div>
+    <button id="ckReset" class="full" style="margin-top:10px">Desmarcar tudo</button></details>
   <small>Espaço: tocar/pausar · ←/→: 5s · Enter: pular etapa · T: modo TV · I: pular intro · + / −: letra mais cedo / mais tarde</small>
 
   <h2>Músicas</h2>
@@ -252,7 +263,8 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 
   <h2>Placar</h2>
   <div class="row"><button id="testCel">📱 Abrir celular (teste)</button><button id="resetAll" class="warn">Zerar noite</button></div>
-  <small>Zerar apaga fila, votos e notas (para ensaio).</small>
+  <button id="dlRes" class="full" style="margin-top:8px">⬇ Baixar resultado da noite (planilha)</button>
+  <small>Zerar apaga fila, votos e notas. Antes de apagar, o telão baixa a planilha do resultado.</small>
   <button id="offBtn" class="full" style="margin-top:8px">📴 Internet caiu? Modo sem internet</button>
 </aside>
 
@@ -658,7 +670,8 @@ function renderLobby(){
   if(!LINK){$('#qr').style.display='none';$('#qrUrl').textContent='(o QR Code aparece quando o site estiver publicado)'}
 }
 $('#testCel').onclick=()=>window.open('celular.html','_blank');
-$('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos e as notas da noite. Não dá para desfazer.',{title:'Zerar a noite?',ok:'Zerar tudo',icon:'🧹',danger:true}))return;
+$('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos e as notas da noite. Não dá para desfazer.'+(P.length?'\n\nA planilha com o resultado vai ser baixada antes, por segurança.':''),{title:'Zerar a noite?',ok:'Zerar tudo',icon:'🧹',danger:true}))return;
+  if(P.length)downloadResult();
   for(const t of['queue','votes','performances'])await store.clear(t);await setStage({status:'lobby',queue_id:null,voting_until:null});refresh();toast('Noite zerada')};
 
 /* ===================== música e letra ===================== */
@@ -1076,6 +1089,84 @@ $('#offBtn').onclick=async()=>{
   }
   location.reload();
 };
+
+/* ===================== resultado da noite (planilha) ===================== */
+function downloadResult(){
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"',L=[],row=a=>L.push(a.map(q).join(';'));
+  const soma=C.RANKING_UNIDADES==='soma';
+  row([C.EVENTO+' · '+C.MARCA+' · Karaokê']);row(['Gerado em',new Date().toLocaleString('pt-BR')]);L.push('');
+  row(['RANKING DAS UNIDADES']);row(['Posição','Unidade',soma?'Pontos (soma)':'Média','Apresentações']);
+  unitStats().forEach((u,i)=>row([i+1,u.nome,soma?u.sum:(u.count?u.avg:''),u.count]));L.push('');
+  row(['TODAS AS APRESENTAÇÕES (da maior nota para a menor)']);
+  row(['Posição','Nome','Unidade','Música','Modo','Nota final','Máquina','Público (só animação)','Aplausos (só animação)','Votos','Horário']);
+  [...P].filter(p=>p.final!=null).sort((a,b)=>b.final-a.final).forEach((p,i)=>row([i+1,p.name,p.unit,p.song_title,MODE[p.mode]||p.mode||'',p.final,p.machine??'',p.public_score??'',p.applause??'',p.votes??'',p.created_at?new Date(p.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'']));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='resultado-karaoke-'+(d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0'))(new Date())+'.csv';document.body.appendChild(a);a.click();a.remove();
+}
+$('#dlRes').onclick=()=>{if(!P.some(p=>p.final!=null)){toast('Ainda não tem nenhuma nota na noite');return}downloadResult();toast('Planilha baixada ✅ (abre no Excel)')};
+
+/* ===================== checklist da festa ===================== */
+const CHECK=[
+  ['Antes do dia',[
+    'Pasta das músicas no notebook da festa (MP3 + .lrc juntos, mesmo nome)',
+    'Cópia "karaoke-offline" no notebook (plano B)',
+    'Ensaio feito com 3 ou mais celulares (entrar na fila, votar, ver placar)',
+    'Pilhas novas nos 2 microfones + pilhas reserva',
+    'Windows: adiar atualizações e desligar a suspensão (Energia > Nunca)']],
+  ['Montagem do som (1 hora antes)',[
+    'Caixa SKP ligada com os volumes no MÍNIMO',
+    'Receptora Dylan: MIX OUTPUT → caixa CH1 (cabo P10), chave do CH1 em LINE',
+    'Receptora Dylan: MIC-A e MIC-B → interface USB (2 cabos XLR) → USB do notebook',
+    'Notebook (saída de fone) → caixa CH2 AUX (cabo P2)',
+    'Notebook na tomada (carregador ligado)',
+    'TV no HDMI e Windows + P → Estender']],
+  ['No telão',[
+    'Telão aberto no Chrome, login feito e status 🟢 Online',
+    'Pasta das músicas escolhida (aparece "X músicas carregadas")',
+    'Mic 1 = interface · Mic 2 = canal direito · "Mics direto na caixa" marcado · 🎤 Ligar microfones',
+    'Falar nos 2 microfones e ver as barrinhas mexerem',
+    '🖥️ Janela TV aberta, arrastada para a TV, dois cliques para tela cheia',
+    'Tocar uma música: ajustar volume da música x voz na caixa',
+    'Limite de tempo escolhido e "Pular introdução sozinho" se quiser',
+    'Escanear o QR Code com o seu celular e entrar na fila (teste)',
+    'Wi-Fi do local funcionando (passar a senha para o pessoal)']],
+  ['No fim da festa',[
+    '⬇ Baixar resultado da noite (planilha) para a premiação']]
+];
+let CK={};try{CK=JSON.parse(localStorage.getItem('k_check')||'{}')}catch(e){}
+function renderCheck(){
+  let n=0,tot=0;
+  $('#ckList').innerHTML=CHECK.map(([g,items],gi)=>'<div class="grp">'+esc(g)+'</div>'+items.map((t,i)=>{const k=gi+'.'+i,on=!!CK[k];tot++;if(on)n++;
+    return '<label class="'+(on?'ok':'')+'"><input type="checkbox" data-k="'+k+'"'+(on?' checked':'')+'><span>'+esc(t)+'</span></label>'}).join('')).join('');
+  $('#ckSum').textContent=(n===tot?'🎉':'✅')+' Checklist da festa ('+n+'/'+tot+')';
+}
+$('#ckList').onchange=e=>{const k=e.target.dataset.k;if(!k)return;CK[k]=e.target.checked;try{localStorage.setItem('k_check',JSON.stringify(CK))}catch(err){}renderCheck()};
+$('#ckReset').onclick=async()=>{if(await kConfirm('Desmarcar todos os itens do checklist?',{ok:'Desmarcar',icon:'✅'})){CK={};try{localStorage.removeItem('k_check')}catch(e){}renderCheck()}};
+renderCheck();
+
+/* ===================== login do telão ===================== */
+function kLogin(){return new Promise(res=>{
+  const ov=document.createElement('div');ov.className='kdlg';
+  ov.innerHTML='<div class="kbox" role="dialog" aria-modal="true"><div class="kic">🔒</div><div class="kt">Entrar no telão</div>'+
+    '<div class="km">Digite a senha do telão. Só o telão pode chamar a fila, dar notas e zerar a noite. Os celulares não precisam de senha.</div>'+
+    '<input type="password" id="kpw" placeholder="Senha do telão" autocomplete="current-password"><div class="kerr" id="kerr"></div>'+
+    '<div class="kb"><button data-v="0">Agora não</button><button class="pri" data-v="1">Entrar</button></div></div>';
+  document.body.appendChild(ov);const pw=ov.querySelector('#kpw'),er=ov.querySelector('#kerr');pw.focus();
+  const go=async()=>{if(!pw.value)return;er.textContent='Entrando...';
+    try{await store.signIn(pw.value);ov.remove();res(true)}catch(e){er.textContent=/invalid/i.test(e.message||'')?'Senha errada. Tente de novo.':'Não deu para entrar: '+(e.message||e)}};
+  pw.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')go();if(e.key==='Escape'){ov.remove();res(false)}});
+  ov.querySelector('[data-v="0"]').onclick=()=>{ov.remove();res(false)};ov.querySelector('[data-v="1"]').onclick=go;
+})}
+let ADMIN=true;
+(async()=>{
+  if(store.mode!=='supabase')return;
+  ADMIN=await store.isAdmin();
+  if(!ADMIN){
+    $('#storeStatus').insertAdjacentHTML('afterend','<button id="loginBtn" class="full pri" style="margin-top:6px">🔒 Entrar no telão (senha)</button>');
+    $('#loginBtn').onclick=async()=>{if(await kLogin()){toast('Telão liberado ✅');setTimeout(()=>location.reload(),600)}};
+    if(await kLogin()){toast('Telão liberado ✅');setTimeout(()=>location.reload(),600)}
+  }
+})();
 
 /* ===================== janela separada para a TV ===================== */
 // O som e o controle ficam aqui; a outra janela só mostra o palco (arraste para a TV e dê dois cliques).
