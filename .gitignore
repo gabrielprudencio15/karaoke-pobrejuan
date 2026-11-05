@@ -1,0 +1,9 @@
+# publica só os arquivos do site
+*
+!.gitignore
+!index.html
+!celular.html
+!karaoke.html
+!karaoke-store.js
+!logo.svg
+!favicon.svg

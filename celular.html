@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0908">
+<title>Karaokê</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="karaoke-store.js"></script>
+<style>
+:root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(700px 400px at 80% -10%,var(--glow),var(--bg));color:var(--txt);font-family:Montserrat,system-ui,sans-serif;min-height:100vh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.disp{font-family:"Bebas Neue",Impact,sans-serif;letter-spacing:1px;font-weight:400}
+header{padding:18px 16px 8px}
+header .b{font-size:40px;color:var(--acc);line-height:.9}
+header img{height:46px}
+header .ev{color:var(--dim);font-size:13px;margin-top:4px}
+.wrap{padding:0 16px}
+.hidden{display:none!important}
+input[type=text],select{width:100%;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:14px;font:inherit;font-size:16px}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px 16px;font:inherit;font-size:16px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:var(--ink);font-weight:800}
+button:disabled{opacity:.45}
+.full{width:100%}
+h3{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:26px;color:var(--acc);margin:18px 0 8px;letter-spacing:1px}
+small,.dim{color:var(--dim);font-size:13px}
+.units{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}
+.units button{padding:16px 6px;font-weight:800}
+.units button.sel{color:var(--ink)}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
+#notice{margin:6px 16px 0;border-radius:14px;padding:0;font-weight:800;font-size:17px;transition:all .3s}
+#notice.on{padding:14px 16px;background:var(--panel2);border:1px solid var(--acc)}
+#notice.hot{background:var(--acc);color:var(--ink);animation:pulse 1s infinite alternate}
+@keyframes pulse{to{transform:scale(1.02)}}
+.song{display:flex;align-items:center;gap:10px;padding:13px 4px;border-bottom:1px solid var(--line)}
+.song .t{flex:1;min-width:0}
+.song .t b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.song .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.song button{padding:8px 12px;font-size:14px}
+.q{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.q .n{font-family:"Bebas Neue",Impact,sans-serif;font-size:30px;width:30px;color:var(--dim);text-align:center}
+.q.me{background:rgba(214,126,89,.1);border-radius:10px}
+.q.me .n{color:var(--acc)}
+.q .t{flex:1;min-width:0}
+.q button{padding:6px 10px;font-size:13px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+.ub{margin:12px 0}
+.ub .top{display:flex;justify-content:space-between;font-weight:800;font-size:18px}
+.ub .track{height:14px;background:var(--field);border-radius:7px;overflow:hidden;margin-top:5px}
+.ub .fill{height:100%;border-radius:7px}
+ol.tops{padding-left:22px}
+ol.tops li{margin:7px 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(14,11,10,.95);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(6px)}
+nav button{background:none;border:none;color:var(--dim);font-size:13px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button span{font-size:22px}
+nav button.on{color:var(--acc);font-weight:800}
+.ov{position:fixed;inset:0;background:rgba(6,4,3,.88);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(3px)}
+.ov.show{display:flex}
+.sheet{background:var(--panel);border-top:1px solid var(--acc);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:520px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.seg button{padding:12px 4px;font-size:14px}
+.seg button.sel{background:var(--acc);color:var(--ink);border-color:var(--acc);font-weight:800}
+.voteStars{display:flex;justify-content:center;gap:6px;margin:18px 0}
+.voteStars button{font-size:40px;background:none;border:none;padding:4px;color:#4a3f38}
+.voteStars button.lit{color:var(--acc)}
+.vsBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.vsBtns button{padding:22px 8px;font-size:18px;font-weight:800}
+.big{font-family:"Bebas Neue",Impact,sans-serif;font-size:56px;color:var(--acc2);text-align:center;line-height:1}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--acc);padding:12px 18px;border-radius:12px;z-index:99;font-size:15px;max-width:90vw}
+.mode{color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<header><div id="brand"></div><div class="ev" id="ev"></div></header>
+<div id="notice"></div>
+
+<section id="reg" class="wrap hidden">
+  <h3>Bem-vindo ao Karaokê! 🎤</h3>
+  <small>Como você quer aparecer no telão?</small>
+  <div style="margin-top:10px"><input id="rName" type="text" maxlength="24" placeholder="Seu nome ou apelido" autocomplete="nickname"></div>
+  <h3>Sua unidade</h3>
+  <div class="units" id="rUnits"></div>
+  <button class="pri full" id="rGo">Entrar</button>
+</section>
+
+<section id="app" class="hidden">
+  <div id="tab-musicas" class="wrap">
+    <h3>Escolha sua música</h3>
+    <input id="search" type="text" placeholder="Buscar música ou artista">
+    <div id="songs"></div>
+  </div>
+  <div id="tab-fila" class="wrap hidden">
+    <div id="nowStage"></div>
+    <h3>Fila</h3>
+    <div id="fila"></div>
+    <button class="full" id="notifBtn" style="margin-top:16px">🔔 Ativar avisos no celular</button>
+  </div>
+  <div id="tab-placar" class="wrap hidden">
+    <h3>Placar das unidades</h3>
+    <div id="units"></div>
+    <h3>Destaques da noite</h3>
+    <ol class="tops" id="tops"></ol>
+    <p class="dim" style="margin-top:24px">Você: <b id="meName"></b> <span id="meUnit"></span> · <a href="#" id="changeMe" style="color:var(--acc)">trocar</a></p>
+  </div>
+  <nav>
+    <button data-tab="musicas" class="on"><span>🎵</span>Músicas</button>
+    <button data-tab="fila"><span>📋</span>Fila</button>
+    <button data-tab="placar"><span>🏆</span>Placar</button>
+  </nav>
+</section>
+
+<div id="sheet" class="ov"><div class="sheet">
+  <small>Você vai cantar</small>
+  <div style="font-size:20px;font-weight:800;margin:4px 0 2px" id="shTitle"></div>
+  <div class="seg" id="shMode">
+    <button data-m="solo" class="sel">🎤 Solo</button><button data-m="dueto">👯 Dueto</button><button data-m="batalha">⚔️ Batalha</button>
+  </div>
+  <div id="shPartner" class="hidden">
+    <input id="shPName" type="text" maxlength="24" placeholder="Nome do parceiro(a)">
+    <div class="units" id="shPUnits"></div>
+  </div>
+  <small id="shHint">Você canta sozinho(a).</small>
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:14px">
+    <button id="shCancel">Voltar</button><button class="pri" id="shGo">Entrar na fila</button>
+  </div>
+</div></div>
+
+<div id="vote" class="ov"><div class="sheet" style="text-align:center">
+  <div class="disp" style="font-size:30px;color:var(--acc)">📱 VOTE AGORA</div>
+  <div style="font-size:20px;font-weight:800;margin-top:6px" id="vWho"></div>
+  <small id="vSong"></small>
+  <div id="vBody"></div>
+  <div class="big" id="vCd"></div>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const slug=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const C=window.KARAOKE_CONFIG,store=window.KStore,dev=store.deviceId();
+const UNITS=C.UNIDADES,unitOf=id=>UNITS.find(u=>u.id===id)||{id,nome:id||'?',cor:'#888'};
+const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:${u.cor}">${esc(u.nome)}</span>`};
+const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'⚔️ Batalha'};
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+
+document.title='Karaokê · '+C.MARCA;
+$('#brand').innerHTML=C.LOGO_URL?`<img src="${esc(C.LOGO_URL)}" alt="${esc(C.MARCA)}">`:`<div class="b disp">${esc(C.MARCA)}</div>`;
+$('#ev').textContent=C.EVENTO+' · Karaokê das Unidades';
+
+/* ---------- cadastro ---------- */
+let me=null;try{me=JSON.parse(localStorage.getItem('k_me')||'null')}catch(e){}
+function unitButtons(el,sel,onPick){
+  el.innerHTML=UNITS.map(u=>`<button data-u="${esc(u.id)}" class="${u.id===sel?'sel':''}" style="${u.id===sel?'background:'+u.cor+';border-color:'+u.cor:''}">${esc(u.nome)}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;onPick(b.dataset.u);unitButtons(el,b.dataset.u,onPick)};
+}
+let regUnit=me?.unit||null;
+function showReg(){
+  $('#reg').classList.remove('hidden');$('#app').classList.add('hidden');
+  $('#rName').value=me?.name||'';unitButtons($('#rUnits'),regUnit,u=>regUnit=u);
+}
+$('#rGo').onclick=()=>{
+  const name=$('#rName').value.trim();
+  if(!name){toast('Coloque seu nome');return}if(!regUnit){toast('Escolha sua unidade');return}
+  me={name,unit:regUnit};localStorage.setItem('k_me',JSON.stringify(me));startApp();
+};
+$('#changeMe').onclick=e=>{e.preventDefault();showReg()};
+
+/* ---------- dados ---------- */
+let CAT=[],Q=[],P=[],STAGE=null;
+const waiting=()=>Q.filter(x=>x.status==='waiting').sort((a,b)=>a.pos-b.pos);
+async function refresh(t){
+  try{
+    if(!t||t==='catalog')CAT=await store.list('catalog');
+    if(!t||t==='queue')Q=await store.list('queue');
+    if(!t||t==='performances')P=await store.list('performances');
+    if(!t||t==='stage'){const s=await store.list('stage');STAGE=s.find(x=>x.id==='main')||null}
+  }catch(e){console.error(e)}
+  if(me)render();
+}
+const TABLES=['catalog','queue','performances','stage'];
+const pend=new Set();let pendT=null;
+function refreshSoon(t){pend.add(t||'*');clearTimeout(pendT);pendT=setTimeout(()=>{const ts=[...pend];pend.clear();ts.includes('*')?refresh():ts.forEach(x=>refresh(x))},250)}
+store.on(ev=>refreshSoon(TABLES.includes(ev.table)?ev.table:null),TABLES);
+setInterval(()=>refresh(),15000);
+// celular que bloqueou a tela perde a conexão: ao voltar, recarrega tudo
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+if(store.wantsOnline&&store.mode!=='supabase')setTimeout(()=>toast('Sem conexão com o servidor. Verifique a internet e recarregue a página.'),500);
+
+/* ---------- abas ---------- */
+let tab='musicas';
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  tab=b.dataset.tab;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  ['musicas','fila','placar'].forEach(t=>$('#tab-'+t).classList.toggle('hidden',t!==tab));window.scrollTo(0,0);
+});
+const goTab=t=>document.querySelector(`nav button[data-tab="${t}"]`).click();
+
+function render(){renderSongs();renderFila();renderPlacar();renderNotice();renderVote()}
+
+function renderSongs(){
+  const q=slug($('#search').value);
+  const list=[...CAT].sort((a,b)=>((a.artist||'')+a.title).localeCompare((b.artist||'')+b.title,'pt')).filter(s=>!q||slug((s.artist||'')+' '+s.title).includes(q));
+  $('#songs').innerHTML=list.length?list.slice(0,300).map(s=>`<div class="song"><div class="t"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}${s.has_lyrics?' · 📝 com letra':''}</small></div><button data-id="${esc(s.id)}">Cantar</button></div>`).join('')
+    :`<p class="dim">${CAT.length?'Nada encontrado.':'O catálogo ainda não foi carregado no telão.'}</p>`;
+}
+$('#search').oninput=renderSongs;
+$('#songs').onclick=e=>{const id=e.target.dataset.id;if(id)openSheet(CAT.find(s=>s.id===id))};
+
+function renderFila(){
+  const sing=Q.find(x=>x.status==='singing');
+  $('#nowStage').innerHTML=sing?`<div class="stage"><small>🎤 No palco agora</small><div style="font-weight:800;font-size:18px">${esc(sing.name)}${chip(sing.unit)}${sing.partner?' & '+esc(sing.partner)+chip(sing.partner_unit||sing.unit):''}</div><small>${esc(sing.song_title)}</small></div>`:'';
+  const w=waiting();
+  $('#fila').innerHTML=w.length?w.map((x,i)=>`<div class="q ${x.device_id===dev?'me':''}"><span class="n">${i+1}</span><div class="t"><b>${esc(x.name)}</b>${chip(x.unit)}${x.partner?' & '+esc(x.partner):''}<div class="mode">${MODE[x.mode]||''} · ${esc(x.song_title)}</div></div>${x.device_id===dev?`<button data-cancel="${x.id}">Sair</button>`:''}</div>`).join('')
+    :'<p class="dim">A fila está vazia. Bora ser o primeiro? 🎤</p>';
+}
+$('#fila').onclick=async e=>{const id=e.target.dataset.cancel;if(id&&confirm('Sair da fila?')){try{await store.update('queue',id,{status:'canceled'});toast('Você saiu da fila')}catch(err){toast('Erro: '+err.message)}}};
+
+function renderPlacar(){
+  const soma=C.RANKING_UNIDADES==='soma';
+  const us=UNITS.map(u=>{const ps=P.filter(p=>p.unit===u.id&&p.final!=null),sum=ps.reduce((a,p)=>a+p.final,0);return{...u,count:ps.length,avg:ps.length?Math.round(sum/ps.length):0,sum}})
+    .sort((a,b)=>soma?b.sum-a.sum:(b.avg-a.avg)||(b.count-a.count));
+  const max=Math.max(1,...us.map(u=>soma?u.sum:u.avg)),medal=['🥇','🥈','🥉'];
+  $('#units').innerHTML=us.map((u,i)=>`<div class="ub"><div class="top"><span>${u.count?medal[i]:''} ${esc(u.nome)}</span><span>${soma?u.sum+' pts':(u.count?u.avg:'—')}</span></div><div class="track"><div class="fill" style="width:${(soma?u.sum:u.avg)/max*100}%;background:${u.cor}"></div></div><small>${u.count} apresentações</small></div>`).join('');
+  const tops=[...P].filter(p=>p.final!=null).sort((a,b)=>b.final-a.final).slice(0,10);
+  $('#tops').innerHTML=tops.length?tops.map(p=>`<li><b style="color:var(--acc)">${p.final}</b> · ${esc(p.name)}${chip(p.unit)}<br><small>${esc(p.song_title||'')}</small></li>`).join(''):'<p class="dim" style="margin-left:-22px">Ninguém cantou ainda.</p>';
+  $('#meName').textContent=me.name;$('#meUnit').innerHTML=chip(me.unit);
+}
+
+/* ---------- entrar na fila ---------- */
+let shSong=null,shMode='solo',shPUnit=null;
+function openSheet(s){
+  shSong=s;shMode='solo';shPUnit=me.unit;$('#shTitle').textContent=(s.artist?s.artist+' - ':'')+s.title;$('#shPName').value='';
+  setMode('solo');unitButtons($('#shPUnits'),shPUnit,u=>shPUnit=u);$('#sheet').classList.add('show');
+}
+function setMode(m){shMode=m;document.querySelectorAll('#shMode button').forEach(b=>b.classList.toggle('sel',b.dataset.m===m));
+  $('#shPartner').classList.toggle('hidden',m==='solo');
+  $('#shHint').textContent=m==='solo'?'Você canta sozinho(a).':m==='dueto'?'Vocês cantam juntos e a nota vale para os dois.':'Um contra o outro: o público decide quem ganhou!'}
+$('#shMode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m)};
+$('#shCancel').onclick=()=>$('#sheet').classList.remove('show');
+$('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('show')};
+$('#shGo').onclick=async()=>{
+  const mine=Q.filter(x=>x.device_id===dev&&x.status==='waiting');
+  if(mine.length>=C.MAX_NA_FILA_POR_CELULAR){toast(`Você já tem ${mine.length} música(s) na fila. Espere cantar 😉`);return}
+  const partner=$('#shPName').value.trim();
+  if(shMode!=='solo'&&!partner){toast('Coloque o nome do parceiro(a)');return}
+  $('#shGo').disabled=true;
+  try{
+    await store.insert('queue',{name:me.name,unit:me.unit,song_id:shSong.id,song_title:(shSong.artist?shSong.artist+' - ':'')+shSong.title,mode:shMode,
+      partner:shMode==='solo'?null:partner,partner_unit:shMode==='solo'?null:shPUnit,status:'waiting',pos:Date.now(),device_id:dev});
+    $('#sheet').classList.remove('show');toast('Você entrou na fila! 🎉');await refresh('queue');goTab('fila');
+  }catch(e){toast('Não deu: '+e.message)}
+  $('#shGo').disabled=false;
+};
+
+/* ---------- avisos ---------- */
+let lastKey=sessionStorage.getItem('k_lastkey')||'';
+function renderNotice(){
+  const mine=Q.filter(x=>x.device_id===dev),sing=mine.find(x=>x.status==='singing'),w=waiting(),pos=w.findIndex(x=>x.device_id===dev);
+  let msg='',key='',hot=false;
+  if(sing){msg='🎤 É A SUA VEZ! Vai pro palco!';key='sing:'+sing.id;hot=true}
+  else if(pos===0){msg='⏳ Você é o próximo! Vai se preparando.';key='next:'+w[0].id;hot=true}
+  else if(pos>0)msg=`📋 Você está na fila: posição ${pos+1}`;
+  const n=$('#notice');n.textContent=msg;n.className=msg?('on'+(hot?' hot':'')):'';
+  if(key&&key!==lastKey){lastKey=key;sessionStorage.setItem('k_lastkey',key);alertUser(msg)}
+}
+function alertUser(msg){
+  try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}
+  if('Notification' in window&&Notification.permission==='granted'){
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.getRegistration().then(r=>r?r.showNotification(C.MARCA+' · Karaokê',{body:msg}):new Notification(C.MARCA+' · Karaokê',{body:msg})).catch(()=>{});
+    else try{new Notification(C.MARCA+' · Karaokê',{body:msg})}catch(e){}
+  }
+}
+$('#notifBtn').onclick=async()=>{
+  if(!('Notification' in window)){toast('Este celular não suporta avisos. Deixe esta página aberta que ela vibra 😉');return}
+  const p=await Notification.requestPermission();toast(p==='granted'?'Avisos ativados ✅':'Sem permissão. A página ainda vibra quando chegar sua vez.');
+};
+
+/* ---------- votação ---------- */
+let voteTimer=null,myStars=0,dlKey='',dl=0;
+// O prazo vem no relógio do notebook. Para não depender do relógio do celular estar certo,
+// usa a DURAÇÃO (voting_until - updated_at, ambos do notebook) contada a partir de quando o celular recebeu.
+function voteDeadline(){
+  if(!STAGE||STAGE.status!=='voting'||!STAGE.queue_id||!STAGE.voting_until)return 0;
+  const key=STAGE.queue_id+'|'+STAGE.voting_until;
+  if(key!==dlKey){dlKey=key;
+    const dur=new Date(STAGE.voting_until)-new Date(STAGE.updated_at||Date.now());
+    dl=Date.now()+Math.max(0,Math.min(dur,10*60*1000))}
+  return dl;
+}
+function renderVote(){
+  const ov=$('#vote');
+  const open=voteDeadline()>Date.now();
+  const e=open?Q.find(x=>x.id===STAGE.queue_id):null;
+  if(!e||localStorage.getItem('k_voted:'+e.id)||e.device_id===dev){ov.classList.remove('show');clearInterval(voteTimer);voteTimer=null;return}
+  if(ov.classList.contains('show')&&ov.dataset.q===e.id)return;
+  ov.dataset.q=e.id;myStars=0;
+  const battle=e.mode==='batalha'&&e.partner;
+  $('#vWho').innerHTML=esc(e.name)+chip(e.unit)+(e.partner?(battle?' vs ':' & ')+esc(e.partner)+chip(e.partner_unit||e.unit):'');
+  $('#vSong').textContent=e.song_title||'';
+  $('#vBody').innerHTML=battle
+    ?`<p>Quem mandou melhor?</p><div class="vsBtns"><button class="pri" data-pick="a">${esc(e.name)}</button><button class="pri" data-pick="b" style="background:var(--acc2);border-color:var(--acc2)">${esc(e.partner)}</button></div>`
+    :`<div class="voteStars">${[1,2,3,4,5].map(n=>`<button data-s="${n}">★</button>`).join('')}</div><button class="pri full" id="vSend" disabled>Enviar voto</button>`;
+  ov.classList.add('show');
+  clearInterval(voteTimer);
+  const tick=()=>{const r=Math.ceil((voteDeadline()-Date.now())/1000);$('#vCd').textContent=r>0?r+'s':'';if(r<=0){ov.classList.remove('show');clearInterval(voteTimer);voteTimer=null}};
+  tick();voteTimer=setInterval(tick,500);
+}
+$('#vBody').onclick=async e=>{
+  const qid=$('#vote').dataset.q,b=e.target.closest('button');if(!b)return;
+  if(b.dataset.s){myStars=+b.dataset.s;document.querySelectorAll('.voteStars button').forEach(x=>x.classList.toggle('lit',+x.dataset.s<=myStars));$('#vSend').disabled=false;return}
+  const row=b.dataset.pick?{queue_id:qid,device_id:dev,pick:b.dataset.pick}:(b.id==='vSend'&&myStars?{queue_id:qid,device_id:dev,stars:myStars}:null);
+  if(!row)return;
+  b.disabled=true;
+  try{await store.insert('votes',row);toast('Voto enviado! ✅')}catch(err){toast(err.message==='Você já votou'?'Você já votou 😉':'Não deu: '+err.message)}
+  localStorage.setItem('k_voted:'+qid,'1');$('#vote').classList.remove('show');clearInterval(voteTimer);voteTimer=null;
+};
+
+function startApp(){$('#reg').classList.add('hidden');$('#app').classList.remove('hidden');render()}
+refresh().then(()=>{me&&me.name&&me.unit?startApp():showReg()});
+</script>
+</body>
+</html>
