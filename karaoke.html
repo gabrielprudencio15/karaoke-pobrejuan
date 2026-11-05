@@ -966,9 +966,12 @@ function toggleTV(){if(!document.fullscreenElement){document.body.classList.add(
 $('#tvBtn').onclick=toggleTV;
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)document.body.classList.remove('tv')});
 document.addEventListener('click',e=>{const b=e.target.closest('button');b&&b.blur()});
+document.addEventListener('change',e=>{if(e.target.tagName==='SELECT'||e.target.type==='checkbox'||e.target.type==='range')e.target.blur()});
 document.addEventListener('keydown',e=>{
-  const tag=e.target.tagName;if((tag==='INPUT'&&e.target.type!=='range')||tag==='TEXTAREA'||tag==='SELECT')return;
-  if(e.key.toLowerCase()==='t'){toggleTV();return}
+  const tag=e.target.tagName,typing=(tag==='INPUT'&&!['range','checkbox','button','file'].includes(e.target.type))||tag==='TEXTAREA';
+  if(typing){if(e.key==='Escape')e.target.blur();return}
+  if(e.key.toLowerCase()==='t'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();toggleTV();return}
+  if(tag==='SELECT')return;
   if(phaseOpen){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();skipFlag=true}return}
   if(e.code==='Space'){e.preventDefault();togglePlay()}
   else if(e.key==='Enter'&&syncing){e.preventDefault();mark()}
