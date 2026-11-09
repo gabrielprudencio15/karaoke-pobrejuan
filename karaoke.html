@@ -143,6 +143,21 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 .bar i{height:10px;background:var(--field);border-radius:5px;overflow:hidden}
 .bar b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width 1.2s ease}
 .bar em{font-style:normal;color:var(--dim);text-align:right}
+#calPanel{position:fixed;top:12px;right:12px;z-index:150;width:380px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;background:var(--panel,#17110d);border:1px solid var(--acc);border-radius:14px;padding:12px 14px;box-shadow:0 10px 40px rgba(0,0,0,.6);display:none;font-size:13px}
+#calPanel.show{display:block}
+#calPanel .calt{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px;margin-bottom:6px}
+#calPanel .calb{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}#calPanel .calb button{font-size:12px;padding:6px 9px}
+.calm{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.calh{font-weight:700;display:flex;gap:8px;align-items:center}.calh .ok,.calnums .ok{color:#4cc38a}.calh .no{color:var(--dim)}.calnt{margin-left:auto;font-weight:800}
+.callv{position:relative;height:12px;background:var(--field);border-radius:6px;margin:8px 0 4px;overflow:hidden}
+.callv b{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--acc2),var(--acc))}
+.callv i{position:absolute;top:0;bottom:0;width:2px}.callv .fl{background:#9aa}.callv .gt{background:#4cc38a;width:3px}
+.calnums{color:var(--dim);font-size:12px;margin-bottom:6px}.calnums b{color:var(--txt)}
+.calr{display:grid;grid-template-columns:118px 1fr 30px;gap:8px;align-items:center;margin:5px 0}
+.calr i{height:8px;background:var(--field);border-radius:4px;overflow:hidden}.calr b{display:block;height:100%;background:var(--acc)}
+.calr em{font-style:normal;text-align:right;font-weight:700}.calr small{grid-column:1/-1;color:var(--dim);font-size:11px;margin-top:-4px}
+.calsc{text-align:right;font-size:14px;margin-top:6px}.calsc b{font-size:28px;color:var(--acc);margin-left:6px}
+.calw{color:var(--dim);margin:8px 0}
 .clap{height:38px;background:var(--field);border-radius:19px;overflow:hidden;margin:18px 0;border:1px solid var(--line)}
 .clap div{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--acc) 60%,var(--acc2))}
 .cdown{font-family:"Bebas Neue",Impact,sans-serif;font-size:70px;color:var(--acc2)}
@@ -256,6 +271,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <label class="sl">Eco <input id="echo" type="range" min="0" max="100"><span id="echoV"></span></label>
   <label class="sl">Reverb <input id="reverb" type="range" min="0" max="100"><span id="reverbV"></span></label>
   <small id="micHint"></small>
+  <button id="calBtn" class="full" style="margin-top:8px">🎯 Calibrar a nota (ao vivo)</button>
 
   <h2>Gravação</h2>
   <button id="recBtn" class="full">⏺ Gravar</button>
@@ -315,6 +331,10 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <div id="phase" class="ov"><div class="card" id="phaseCard"></div></div>
 <div id="roleta" class="ov"><div class="card"><div class="ph-k">🎲 ROLETA DO KARAOKÊ</div><div class="nm" id="rolName"></div><div id="rolUnit"></div><div class="cardBtns"><button id="rolAgain">Girar de novo</button><button id="rolClose" class="pri">Fechar</button></div></div></div>
 <div id="confetti"></div>
+<div id="calPanel"><div class="calt">🎯 Calibração da nota <button id="calClose" title="Fechar">✕</button></div>
+  <div class="calb"><button id="calLeak">📏 Medir vazamento (6 s, sem cantar)</button><button id="calReset">🔄 Zerar medição</button></div>
+  <div id="calBody"></div>
+  <small style="color:var(--dim);display:block;margin-top:8px">Só aparece neste notebook (não vai para a TV). Toque uma música, fale e depois cante: falando deve ficar entre 25 e 40.</small></div>
 
 <script>
 /* ===================== base ===================== */
@@ -363,7 +383,7 @@ $('#addUnit').innerHTML=unitOpts;$('#addPUnit').innerHTML=unitOpts;
 $('#addMode').onchange=()=>$('#partnerRow').style.display=$('#addMode').value==='solo'?'none':'';
 
 /* ===================== áudio ===================== */
-let fadeGain,ctx,master,recDest,musicGain,direct,vrGain,micIn,micVol,micOut,dryGain,recVoice,echoWet,fb,revWet,monitorOn=true;
+let chromaAn=null,chromaBuf=null,fadeGain,ctx,master,recDest,musicGain,direct,vrGain,micIn,micVol,micOut,dryGain,recVoice,echoWet,fb,revWet,monitorOn=true;
 const mics=[null,null];
 [['music',80],['mic',70],['echo',15],['reverb',30]].forEach(([id,d])=>{
   const el=$('#'+id),out=$('#'+id+'V');el.value=S[id]??d;out.textContent=el.value;
@@ -380,8 +400,12 @@ function ensureCtx(){
   recDest=ctx.createMediaStreamDestination();master.connect(recDest);
   const src=ctx.createMediaElementSource(media);
   musicGain=ctx.createGain();fadeGain=ctx.createGain();musicGain.connect(fadeGain);fadeGain.connect(master);
-  direct=ctx.createGain();src.connect(direct);direct.connect(musicGain);
-  vrGain=ctx.createGain();vrGain.connect(musicGain);
+  // musicSum = música que vai tocar (com ou sem "remover voz"), antes do volume: dela sai o chroma da harmonia
+  const musicSum=ctx.createGain();musicSum.connect(musicGain);
+  chromaAn=ctx.createAnalyser();chromaAn.fftSize=8192;chromaAn.smoothingTimeConstant=0.3;musicSum.connect(chromaAn);
+  chromaBuf=new Float32Array(chromaAn.frequencyBinCount);
+  direct=ctx.createGain();src.connect(direct);direct.connect(musicSum);
+  vrGain=ctx.createGain();vrGain.connect(musicSum);
   const split=ctx.createChannelSplitter(2),inv=ctx.createGain(),side=ctx.createGain();
   inv.gain.value=-1;src.connect(split);split.connect(side,0);split.connect(inv,1);inv.connect(side);
   const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=160;side.connect(hp);hp.connect(vrGain);
@@ -436,7 +460,8 @@ async function listDevices(){
     $('#outSel').innerHTML='<option value="">Saída: padrão</option>'+outs.map(opt).join('');$('#outSel').value=S.out||'';
   }catch(e){}
 }
-const newScore=()=>({tot:0,voiced:0,exp:0,expV:0,extra:0,cents:0,pitched:0,stable:0,lastMidi:null});
+// acumulador da nota v2 (tempos em segundos). seg = nota sendo cantada agora; notes = notas sustentadas fechadas
+const newScore=()=>({tot:0,voiceT:0,sungT:0,expT:0,expSung:0,expVoice:0,chromaT:0,notes:[],seg:null,hist:[]});
 const micConstraints=(deviceId,extra={})=>({audio:{deviceId:deviceId?{exact:deviceId}:undefined,echoCancellation:false,noiseSuppression:false,autoGainControl:false,...extra}});
 // monta a análise (medidor + afinação) a partir de um nó de áudio de 1 microfone
 function buildMic(node,stream,owned){
@@ -444,7 +469,11 @@ function buildMic(node,stream,owned){
   const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;
   const comp=ctx.createDynamicsCompressor();comp.threshold.value=-24;comp.ratio.value=4;
   const pitch=ctx.createAnalyser();pitch.fftSize=2048;node.connect(hp);hp.connect(comp);comp.connect(pitch);
-  return{stream,nodes:owned,raw,pitch,sc:newScore(),buf:new Float32Array(2048),rbuf:new Float32Array(1024),note:'—',dev:99,voiced:false};
+  // nível para o gate: depois do passa-alta e ANTES do compressor (o compressor achata a diferença voz x vazamento)
+  const lvl=ctx.createAnalyser();lvl.fftSize=1024;hp.connect(lvl);
+  const slot=mics.indexOf(null)<0?0:mics.indexOf(null),f0=(S.leakFloor||[])[slot];
+  return{stream,nodes:owned,raw,pitch,lvl,sc:newScore(),cal:newScore(),buf:new Float32Array(2048),rbuf:new Float32Array(1024),lbuf:new Float32Array(1024),
+    note:'—',dev:99,voiced:false,leak:[],floor:typeof f0==='number'?f0:K.pisoInicialDb,db:-100,leakUntil:0,nt:0};
 }
 async function openMic(slot,deviceId){
   const stream=await navigator.mediaDevices.getUserMedia(micConstraints(deviceId));
@@ -769,9 +798,21 @@ function finishSync(){syncing=false;lyr.synced=true;$('#syncBar').classList.remo
 function cancelSync(){if(!syncing)return;syncing=false;lyr=JSON.parse(syncBackup);$('#syncBar').classList.remove('show');lastIdx=-2;renderLyricsStatic()}
 $('#markBtn').onclick=mark;$('#undoBtn').onclick=undo;$('#cancelSync').onclick=cancelSync;
 
-/* ===================== pontuação (por microfone) ===================== */
+/* ===================== pontuação v2 (por microfone) ===================== */
 const NOTES=['Dó','Dó♯','Ré','Ré♯','Mi','Fá','Fá♯','Sol','Sol♯','Lá','Lá♯','Si'];
-let lastTick=0;
+// valores padrão; dá para trocar qualquer um em KARAOKE_CONFIG.NOTA (karaoke-store.js)
+const K={pisoInicialDb:-60,margemDb:8,gateMinDb:-55,pisoPercentil:0.8,pisoAmostras:600,
+  notaMinMs:250,notaDesvio:0.5,priorSeg:3,chromaMinHz:110,chromaMaxHz:2000,
+  cantoMin:0.10,cantoBom:0.45,afinBoa:10,afinRuim:30,firmBoa:15,firmRuim:40,harmAleat:0.33,harmBom:0.75,
+  entradaBoa:0.45,presencaBoa:0.30,vozBoa:0.55,
+  ...(C.NOTA||{})};
+K.pesos={voz:0.35,afinacao:0.30,harmonia:0.50,firmeza:0.20,...((C.NOTA||{}).pesos||{})};
+const clamp01=x=>Math.max(0,Math.min(1,x));
+const median=a=>{const b=[...a].sort((x,y)=>x-y),n=b.length;return n?(n%2?b[n>>1]:(b[n/2-1]+b[n/2])/2):0};
+const pctl=(a,q)=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(q*(b.length-1))]};
+const pcOf=m=>((Math.round(m)%12)+12)%12;
+let lastTick=0,calOn=false,calN=0;
+let chroma=new Float32Array(12),chromaMask=null,chromaPc=null;
 function detectPitch(buf,sr){
   const W=1024;let e=0;for(let i=0;i<W;i++)e+=buf[i]*buf[i];
   const rms=Math.sqrt(e/W);if(rms<0.012)return{rms,f:0,clar:0};
@@ -792,37 +833,132 @@ function expectedNow(){
   const c=L[i],n=L[i+1];if(!c||!c.text)return false;
   return t<Math.min(n?n.t:c.t+6,c.t+Math.max(2.5,c.text.length*0.12)+1);
 }
+// chroma da música: força de cada uma das 12 classes de nota (Dó..Si) agora, suavizada em ~250 ms
+function chromaTick(dt){
+  chromaMask=null;
+  if(!chromaAn||!media.src||media.paused)return;
+  if(!chromaPc){const bw=ctx.sampleRate/chromaAn.fftSize;chromaPc=new Int8Array(chromaBuf.length).fill(-1);
+    for(let i=1;i<chromaBuf.length;i++){const f=i*bw;if(f>=K.chromaMinHz&&f<=K.chromaMaxHz)chromaPc[i]=pcOf(69+12*Math.log2(f/440))}}
+  chromaAn.getFloatFrequencyData(chromaBuf);
+  const c=new Float32Array(12);let tot=0;
+  for(let i=0;i<chromaBuf.length;i++){const pc=chromaPc[i];if(pc<0)continue;const db=chromaBuf[i];if(!(db>-90))continue;const a=Math.pow(10,db/20);c[pc]+=a;tot+=a}
+  if(tot<0.01)return; // música em silêncio
+  const a=Math.exp(-dt/0.25);for(let k=0;k<12;k++)chroma[k]=chroma[k]*a+(c[k]/tot)*(1-a);
+  const ord=[...Array(12).keys()].sort((x,y)=>chroma[y]-chroma[x]);let t3=0,t5=0;
+  ord.forEach((pc,r)=>{if(r<3)t3|=1<<pc;if(r<5)t5|=1<<pc});chromaMask={t3,t5};
+}
+// lê 1 microfone: nível (dB), gate adaptativo, afinação. Devolve o "tique" que alimenta os acumuladores
+function micTick(m,dt,exp,learn){
+  m.lvl.getFloatTimeDomainData(m.lbuf);let e=0;for(const x of m.lbuf)e+=x*x;
+  m.db=10*Math.log10(e/m.lbuf.length+1e-12);
+  m.gate=Math.max(m.floor+K.margemDb,K.gateMinDb);
+  m.pitch.getFloatTimeDomainData(m.buf);const p=detectPitch(m.buf,ctx.sampleRate);
+  const voice=m.db>=m.gate,pOk=voice&&p.f>70&&p.f<1100&&p.clar>0.55;
+  const midi=pOk?69+12*Math.log2(p.f/440):null;
+  // vazamento: na intro e nos trechos sem letra, com música tocando (ou no botão "medir")
+  const forced=performance.now()<m.leakUntil;
+  if(forced||(learn&&!(pOk&&m.leak.length>=40))){
+    m.leak.push(m.db);if(m.leak.length>K.pisoAmostras)m.leak.shift();
+    if(forced||++m.nt%5===0)m.floor=pctl(m.leak,K.pisoPercentil);
+  }
+  m.voiced=voice;
+  if(midi!=null){const near=Math.round(midi);m.note=NOTES[pcOf(midi)];m.dev=Math.abs(midi-near)*100}
+  else if(!voice){m.note='—';m.dev=99}
+  return{dt,voice,midi,exp,mask:chromaMask};
+}
+// segmenta o pitch em notas: segue a mesma nota enquanto o pitch (mediana de 3) fica a < 0,5 semitom da média da nota
+function feed(s,k){
+  s.tot+=k.dt;if(k.voice)s.voiceT+=k.dt;if(k.exp===true){s.expT+=k.dt;if(k.voice)s.expVoice+=k.dt}if(k.mask)s.chromaT+=k.dt;
+  if(k.midi!=null){
+    s.hist.push(k.midi);if(s.hist.length>3)s.hist.shift();const sm=median(s.hist),g=s.seg;
+    if(g&&Math.abs(sm-g.sum/g.n)<K.notaDesvio){g.n++;g.sum+=sm;g.ps.push(sm);g.d+=k.dt;if(k.exp===true)g.e+=k.dt;g.ms.push(k.mask);g.miss=0}
+    else{closeSeg(s);s.seg={n:1,sum:sm,ps:[sm],d:k.dt,e:k.exp===true?k.dt:0,ms:[k.mask],miss:0}}
+  }else{s.hist.length=0;if(s.seg&&++s.seg.miss>1)closeSeg(s)} // 1 tique sem pitch (consoante) não quebra a nota
+}
+function closeSeg(s){
+  const g=s.seg;s.seg=null;if(!g||g.d*1000<K.notaMinMs)return; // curta demais: glissando/fala, não conta
+  const med=median(g.ps),mean=g.sum/g.n;let v=0;g.ps.forEach(x=>v+=(x-mean)**2);
+  const pc=pcOf(med);let h=0,hn=0;g.ms.forEach(mk=>{if(!mk)return;hn++;h+=(mk.t3>>pc&1)?1:(mk.t5>>pc&1)?0.5:0});
+  s.sungT+=g.d;s.expSung+=g.e;
+  s.notes.push({m:med,d:g.d,jit:Math.sqrt(v/g.n)*100,h:hn*2>=g.ms.length?h/hn:null});
+}
+function computeScore(s,final=true){
+  if(!s)return null;if(final)closeSeg(s);
+  if(s.voiceT<(final?3:0.5))return null;
+  const N=s.notes,P=K.priorSeg;let w=0,cx=0,cy=0;
+  N.forEach(n=>{w+=n.d;cx+=Math.cos(2*Math.PI*n.m)*n.d;cy+=Math.sin(2*Math.PI*n.m)*n.d});
+  // 1) canto: quanto da voz foi nota sustentada (fala ≈ 0)
+  const cantoPct=Math.min(1,s.sungT/s.voiceT),canto=clamp01((cantoPct-K.cantoMin)/(K.cantoBom-K.cantoMin));
+  // 2) afinação: desvio de cada nota até o semitom mais próximo, descontando a afinação geral do cantor/música
+  const off=w?Math.atan2(cy,cx)/(2*Math.PI):0;let dv=0,jt=0;
+  N.forEach(n=>{const f=n.m-off;dv+=Math.abs(f-Math.round(f))*100*n.d;jt+=Math.min(n.jit,60)*n.d});
+  const desvio=(dv+25*P)/(w+P),tremor=(jt+K.firmRuim*P)/(w+P); // poucas notas puxam para o "aleatório"
+  const afin=canto*clamp01((K.afinRuim-desvio)/(K.afinRuim-K.afinBoa));
+  // 3) firmeza: o quanto o pitch treme dentro de cada nota
+  const firm=canto*clamp01((K.firmRuim-tremor)/(K.firmRuim-K.firmBoa));
+  // 4) harmonia: a nota cantada está entre as mais fortes da música naquele momento?
+  let hs=0,hw=0;N.forEach(n=>{if(n.h!=null){hs+=n.h*n.d;hw+=n.d}});
+  const harmRate=s.chromaT>=5?(hs+K.harmAleat*P)/(hw+P):null;
+  const harm=harmRate==null?null:canto*clamp01((harmRate-K.harmAleat)/(K.harmBom-K.harmAleat));
+  // 5) entrada nas frases: tempo CANTANDO (nota sustentada) dentro das linhas da letra
+  const synced=s.expT>=5;
+  const ent=synced?clamp01(s.expSung/s.expT/K.entradaBoa):clamp01(s.sungT/s.tot/K.presencaBoa);
+  // 6) voz presente: qualquer voz acima do gate nas linhas da letra (é o que a fala consegue)
+  const voz=synced?clamp01(s.expVoice/s.expT/K.vozBoa):clamp01(s.voiceT/s.tot/K.vozBoa);
+  // nota = parte da voz + parte do canto × qualidade musical
+  const W=K.pesos,q=[[clamp01((K.afinRuim-desvio)/(K.afinRuim-K.afinBoa)),W.afinacao],[harmRate==null?null:clamp01((harmRate-K.harmAleat)/(K.harmBom-K.harmAleat)),W.harmonia],[clamp01((K.firmRuim-tremor)/(K.firmRuim-K.firmBoa)),W.firmeza]].filter(x=>x[0]!=null);
+  const Q=q.reduce((a,[v,p])=>a+v*p,0)/q.reduce((a,[,p])=>a+p,0),Pt=(canto+ent)/2;
+  const raw=W.voz*voz+(1-W.voz)*Pt*Q;
+  return{score:Math.round(100*raw),raw,voz,canto,cantoPct,Pt,Q,timing:ent,tuning:afin,harm,stab:firm,synced,desvio,tremor,harmRate,notas:N.length,sungT:s.sungT,voiceT:s.voiceT};
+}
 function scoreTick(){
-  const now=performance.now();if(now-lastTick<50)return;lastTick=now;
-  if(!ctx||!micsActive())return;
-  const scoring=busy&&!phaseOpen&&!media.paused&&!syncing&&!!media.src;
-  const exp=scoring?expectedNow():null;
-  mics.forEach(m=>{
-    if(!m)return;m.pitch.getFloatTimeDomainData(m.buf);const p=detectPitch(m.buf,ctx.sampleRate);
-    const voiced=p.rms>0.02;m.voiced=voiced;const s=m.sc;
-    if(scoring){s.tot++;if(voiced)s.voiced++;if(exp!==null){if(exp){s.exp++;if(voiced)s.expV++}else if(voiced)s.extra++}}
-    if(voiced&&p.f>70&&p.f<1100&&p.clar>0.55){
-      const midi=69+12*Math.log2(p.f/440),near=Math.round(midi),dev=Math.abs(midi-near)*100;
-      if(scoring){s.cents+=dev;s.pitched++;if(s.lastMidi!==null){let d=Math.abs(midi-s.lastMidi)%12;d=Math.min(d,12-d);if(d<0.6)s.stable++}s.lastMidi=midi}
-      m.note=NOTES[((near%12)+12)%12];m.dev=dev;
-    }else{s.lastMidi=null;if(!voiced){m.note='—';m.dev=99}}
-  });
+  const now=performance.now();if(now-lastTick<50)return;const dt=Math.min(0.12,(now-lastTick)/1000);lastTick=now;
+  if(!ctx)return;
+  chromaTick(dt);
+  if(!micsActive()){if(calOn&&++calN%4===0)calRender();return}
+  const playing=!!media.src&&!media.paused&&!syncing;
+  const exp=playing?expectedNow():null;
+  const scoring=busy&&!phaseOpen&&playing;
+  mics.forEach(m=>{if(!m)return;const k=micTick(m,dt,exp,playing&&exp===false);if(scoring)feed(m.sc,k);if(calOn)feed(m.cal,k)});
   const m0=mics[0]||mics[1],ln=$('#liveNote');
   if(m0){ln.textContent='🎵 '+m0.note;ln.style.color=noteColor(m0.dev)}
   document.querySelectorAll('#singerBar .nt').forEach((el,i)=>{const m=mics[i]||(i===0?m0:null);if(m){el.textContent=m.note==='—'?'':'🎵 '+m.note;el.style.color=noteColor(m.dev)}});
+  if(calOn&&++calN%4===0)calRender();
 }
 const noteColor=d=>d<15?'#4cc38a':d<30?'#ffd23d':d<99?'#ff7a7a':'';
-function computeScore(s){
-  if(!s||s.voiced<60)return null;
-  const synced=s.exp>40;
-  const timing=synced?Math.min(1,(s.expV/s.exp)/0.75):Math.min(1,(s.voiced/s.tot)/0.45);
-  const avg=s.pitched?s.cents/s.pitched:50;
-  const tuning=Math.max(0,Math.min(1,(42-avg)/27));
-  const stab=s.pitched?Math.min(1,(s.stable/s.pitched)/0.8):0;
-  const pen=synced?Math.min(0.15,s.extra/s.tot):0;
-  const raw=Math.max(0,0.45*timing+0.35*tuning+0.2*stab-pen);
-  return{score:Math.round(30+70*raw),timing,tuning,stab,synced};
+const saveFloors=()=>{S.leakFloor=mics.map((m,i)=>m?Math.round(m.floor*10)/10:(S.leakFloor||[])[i]??null);save()};
+
+/* modo calibração: mostra ao vivo o que a máquina está medindo */
+function calRender(){
+  const box=$('#calBody');if(!box)return;
+  if(!micsActive()){box.innerHTML='<p class="calw">Ligue os microfones (🎤 na lateral) para ver as medições.</p>';return}
+  const pc=x=>x==null?'—':Math.round(x*100);
+  const row=(l,v,extra='')=>`<div class="calr"><span>${l}</span><i><b style="width:${v==null?0:Math.round(v*100)}%"></b></i><em>${pc(v)}</em>${extra?`<small>${extra}</small>`:''}</div>`;
+  box.innerHTML=mics.map((m,i)=>{if(!m)return'';
+    const r=computeScore(m.cal,false),pos=d=>Math.max(0,Math.min(100,(d+80)/80*100));
+    const meas=performance.now()<m.leakUntil;
+    return `<div class="calm"><div class="calh">Mic ${i+1} ${m.voiced?'<span class="ok">● VOZ</span>':'<span class="no">○ sem voz</span>'} <span class="calnt">🎵 ${m.note}${m.dev<99?' ('+(m.dev<1?'0':Math.round(m.dev))+'¢)':''}</span></div>
+      <div class="callv"><b style="width:${pos(m.db)}%"></b><i class="fl" style="left:${pos(m.floor)}%" title="piso"></i><i class="gt" style="left:${pos(m.gate??-99)}%" title="gate"></i></div>
+      <div class="calnums">Nível <b>${m.db.toFixed(0)} dB</b> · Piso (vazamento) <b>${m.floor.toFixed(0)} dB</b> · Voz acima de <b>${(m.gate??0).toFixed(0)} dB</b>${meas?' · <span class="ok">medindo vazamento…</span>':''}</div>
+      ${r?row('🗣️ Voz presente',r.voz)+row('🎶 Canto',r.canto,Math.round(r.cantoPct*100)+'% da voz em notas firmes · '+r.notas+' notas')+
+        row('⏱️ '+(r.synced?'Entrada':'Presença'),r.timing)+
+        row('🎯 Afinação',r.tuning,'desvio médio '+Math.round(r.desvio)+'¢')+
+        row('🎼 Harmonia',r.harm,r.harmRate==null?'sem áudio da música':Math.round(r.harmRate*100)+'% das notas no acorde')+
+        row('💪 Firmeza',r.stab,'tremor '+Math.round(r.tremor)+'¢')+
+        `<div class="calsc">Nota parcial <b>${r.score}</b></div>`
+       :'<p class="calw">Cante ou fale no microfone…</p>'}</div>`}).join('');
 }
+function calOpen(on){calOn=on;$('#calPanel').classList.toggle('show',on);$('#calBtn').classList.toggle('on',on);
+  if(on){mics.forEach(m=>{if(m)m.cal=newScore()});calRender()}}
+$('#calBtn').onclick=()=>calOpen(!calOn);
+$('#calClose').onclick=()=>calOpen(false);
+$('#calReset').onclick=()=>{mics.forEach(m=>{if(m)m.cal=newScore()});calRender()};
+$('#calLeak').onclick=()=>{
+  if(!micsActive()){toast('Ligue os microfones primeiro');return}
+  if(media.paused)toast('Dica: dê play numa música (sem cantar) para medir o vazamento real da caixa');
+  mics.forEach(m=>{if(m){m.leak=[];m.leakUntil=performance.now()+6000}});
+  setTimeout(()=>{saveFloors();toast('Vazamento medido ✅')},6200);
+};
 function combine(m,p,a){const W=C.PESOS;let tot=0,w=0;[[m,W.maquina],[p,W.publico],[a,W.aplausos]].forEach(([v,k])=>{if(v!=null&&k>0){tot+=v*k;w+=k}});
   if(w)return Math.round(tot/w);
   // microfone não deu nota: usa o que tiver (público, depois aplausos) para a pessoa não ficar sem pontos
@@ -870,6 +1006,7 @@ async function finishPerformance(){
   if(!busy||!current||phaseOpen)return;
   media.pause();const e=current;
   const r=mics.map(m=>m?computeScore(m.sc):null),valid=r.filter(Boolean);
+  if(micsActive())saveFloors();
   let mA=null,mB=null;
   if(e.mode==='batalha'&&r[0]&&r[1]){mA=r[0];mB=r[1]}
   else if(e.mode==='batalha'){mA=mB=valid[0]||null}
@@ -879,7 +1016,8 @@ async function finishPerformance(){
 
   /* 1) nota da máquina */
   if(mA||mB){
-    const bars=x=>x?`<div class="bar"><span>${x.synced?'Entrada nas frases':'Presença'}</span><i><b style="width:${x.timing*100}%"></b></i><em>${Math.round(x.timing*100)}</em></div><div class="bar"><span>Afinação</span><i><b style="width:${x.tuning*100}%"></b></i><em>${Math.round(x.tuning*100)}</em></div><div class="bar"><span>Firmeza</span><i><b style="width:${x.stab*100}%"></b></i><em>${Math.round(x.stab*100)}</em></div>`:'';
+    const bar=(l,v)=>v==null?'':`<div class="bar"><span>${l}</span><i><b style="width:${v*100}%"></b></i><em>${Math.round(v*100)}</em></div>`;
+    const bars=x=>x?bar('Voz presente',x.voz)+bar('Canto',x.canto)+bar(x.synced?'Entrada nas frases':'Presença',x.timing)+bar('Afinação',x.tuning)+bar('Harmonia',x.harm)+bar('Firmeza',x.stab):'';
     if(battle&&mA!==mB)showPhase(`<div class="ph-k">🎛️ NOTA DA MÁQUINA</div><div class="vs"><div class="side"><div class="ph-t">${esc(ps[0].name)}</div><div class="ph-mid" id="mA">0</div></div><div class="x">VS</div><div class="side"><div class="ph-t">${esc(ps[1].name)}</div><div class="ph-mid" id="mB">0</div></div></div>`);
     else showPhase(`<div class="ph-k">🎛️ NOTA DA MÁQUINA</div><div class="ph-t">${namesHtml(e)}</div><div class="ph-big" id="mA">0</div>${bars(mA)}`);
     const ease=k=>1-Math.pow(1-k,3);
@@ -1125,6 +1263,7 @@ const CHECK=[
     'Pasta das músicas escolhida (aparece "X músicas carregadas")',
     'Mic 1 = interface · Mic 2 = canal direito · "Mics direto na caixa" marcado · 🎤 Ligar microfones',
     'Falar nos 2 microfones e ver as barrinhas mexerem',
+    '🎯 Calibrar a nota: música tocando, "Medir vazamento", depois falar (25–40) e cantar',
     '🖥️ Janela TV aberta, arrastada para a TV, dois cliques para tela cheia',
     'Tocar uma música: ajustar volume da música x voz na caixa',
     'Limite de tempo escolhido e "Pular introdução sozinho" se quiser',
