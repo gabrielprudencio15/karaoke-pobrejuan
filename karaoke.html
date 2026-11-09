@@ -9,7 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611051800"></script>
+<script src="karaoke-store.js?v=202611091500"></script>
+<script src="spotify.js?v=202611091500"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -222,6 +223,14 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <small>Dica: nomeie como <b>Artista - Música.mp3</b>. Letra .lrc com o mesmo nome entra junto.</small>
   <div class="row"><input id="catSearch" type="text" placeholder="Buscar no catálogo (0 músicas)"></div>
   <div class="list" id="catList"></div>
+  <div id="spSec" style="display:none">
+    <h2>Spotify</h2>
+    <button id="spLogin" class="full">🟢 Conectar Spotify (Premium)</button>
+    <small id="spStat"></small>
+    <div id="spSearchRow"><div class="row"><input id="spQ" type="text" placeholder="Buscar versão karaokê no Spotify (Enter)"></div>
+    <div class="list" id="spRes"></div></div>
+    <button id="spOut" class="full" style="margin-top:6px;font-size:12px">Desconectar Spotify</button>
+  </div>
 
   <h2>Adicionar à fila</h2>
   <div class="row"><input id="addName" type="text" placeholder="Nome"><select id="addUnit"></select></div>
@@ -362,7 +371,21 @@ function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null,danger=
 }
 const kAlert=(msg,title='',icon='⚠️')=>kDialog({msg,title,icon});
 const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
-const media=$('#media'),box=$('#lyrics');
+const mediaEl=$('#media'),box=$('#lyrics');
+/* "media" = o player atual, com a mesma cara do <video>: arquivo local (o próprio <video>) ou Spotify (spOn) */
+const SP_OK=!!(window.KSP&&KSP.configured&&location.protocol!=='file:');
+let spOn=false,spStarted='',spPend=0,spEnded='',spFading=null;const mH={};
+const media={
+  get src(){return spOn?(curSong?.sp?.uri||''):mediaEl.src},set src(v){mediaEl.src=v},
+  get paused(){return spOn?KSP.st.paused:mediaEl.paused},
+  get currentTime(){return spOn?KSP.pos():mediaEl.currentTime},set currentTime(v){spOn?spSeek(v):(mediaEl.currentTime=v)},
+  get duration(){return spOn?(KSP.st.dur||curSong?.sp?.dur||0):mediaEl.duration},
+  get readyState(){return spOn?4:mediaEl.readyState},get videoWidth(){return spOn?0:mediaEl.videoWidth},
+  get classList(){return mediaEl.classList},captureStream(){return mediaEl.captureStream()},
+  play(){return spOn?spPlay():mediaEl.play()},pause(){spOn?spPause():mediaEl.pause()},
+  addEventListener(ev,f,o){if(spOn&&ev==='loadedmetadata'){setTimeout(f);return}mediaEl.addEventListener(ev,f,o)}
+};
+['loadedmetadata','ended','play','pause'].forEach(ev=>Object.defineProperty(media,'on'+ev,{set(f){mH[ev]=f;mediaEl['on'+ev]=e=>{if(!spOn)f(e)}}}));
 
 let S={};try{S=JSON.parse(localStorage.getItem('karaoke')||'{}')}catch(e){}
 const save=()=>{try{localStorage.setItem('karaoke',JSON.stringify(S))}catch(e){}};
@@ -398,7 +421,7 @@ function ensureCtx(){
   ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
   master=ctx.createGain();master.connect(ctx.destination);
   recDest=ctx.createMediaStreamDestination();master.connect(recDest);
-  const src=ctx.createMediaElementSource(media);
+  const src=ctx.createMediaElementSource(mediaEl);
   musicGain=ctx.createGain();fadeGain=ctx.createGain();musicGain.connect(fadeGain);fadeGain.connect(master);
   // musicSum = música que vai tocar (com ou sem "remover voz"), antes do volume: dela sai o chroma da harmonia
   const musicSum=ctx.createGain();musicSum.connect(musicGain);
@@ -429,6 +452,7 @@ function ensureCtx(){
 function applyAll(){
   if(!ctx)return;const v=id=>+$('#'+id).value/100;
   musicGain.gain.value=v('music');micVol.gain.value=v('mic')*2;
+  if(SP_OK&&KSP.player&&!spFading)KSP.setVolume(v('music'));
   echoWet.gain.value=v('echo')*0.7;fb.gain.value=0.2+v('echo')*0.35;revWet.gain.value=v('reverb')*1.2;
   const on=$('#vocal').classList.contains('on');direct.gain.value=on?0:1;vrGain.gain.value=on?1:0;
   micOut.gain.value=monitorOn?1:0;
@@ -560,7 +584,7 @@ function renderCatalog(){
   const q=slug($('#catSearch').value),all=Object.values(songs).sort((a,b)=>songLabel(a).localeCompare(songLabel(b),'pt'));
   $('#catSearch').placeholder=`Buscar no catálogo (${all.length} músicas)`;
   const list=all.filter(s=>!q||slug(songLabel(s)).includes(q)).slice(0,200);
-  $('#catList').innerHTML=list.length?list.map(s=>`<div class="it"><span class="t" title="${esc(songLabel(s))}">${hasLyrics(s.id)?'📝':'🎵'} ${esc(songLabel(s))}</span><button data-pre="${esc(s.id)}" title="Tocar para testar">▶</button><button data-add="${esc(s.id)}">+ fila</button></div>`).join(''):'<div class="it"><small>Nenhuma música carregada.</small></div>';
+  $('#catList').innerHTML=list.length?list.map(s=>`<div class="it"><span class="t" title="${esc(songLabel(s))}${s.sp?' (Spotify: '+esc(s.sp.name)+')':''}">${s.sp?'🟢':hasLyrics(s.id)?'📝':'🎵'} ${esc(songLabel(s))}</span><button data-pre="${esc(s.id)}" title="Tocar para testar">▶</button><button data-add="${esc(s.id)}">+ fila</button></div>`).join(''):'<div class="it"><small>Nenhuma música carregada.</small></div>';
   $('#songDL').innerHTML=all.map(s=>`<option value="${esc(songLabel(s))}">`).join('');
 }
 $('#catSearch').oninput=renderCatalog;
@@ -570,7 +594,8 @@ $('#catList').onclick=e=>{
   if(add){$('#addSong').value=songLabel(songs[add]);$('#addName').focus()}
 };
 $('#files').onchange=e=>{ingest([...e.target.files]);e.target.value=''};
-$('#folderInput').onchange=e=>{songs={};ingest([...e.target.files]);e.target.value=''};
+const keepSp=()=>Object.fromEntries(Object.entries(songs).filter(([,s])=>s.sp)); // trocar a pasta não apaga as faixas do Spotify
+$('#folderInput').onchange=e=>{songs=keepSp();ingest([...e.target.files]);e.target.value=''};
 
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('karaoke',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function idbGet(k){const db=await idb();return new Promise(res=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)})}
@@ -580,7 +605,7 @@ async function loadDir(){
   async function walk(h,depth){for await(const [n,e] of h.entries()){
     if(e.kind==='file'){if(/\.(mp3|m4a|aac|wav|ogg|flac|mp4|webm|mkv|lrc|txt)$/i.test(n))files.push(await e.getFile())}
     else if(depth<2)await walk(e,depth+1)}}
-  await walk(dirHandle,0);songs={};await ingest(files);toast(`${Object.keys(songs).length} músicas carregadas`);
+  await walk(dirHandle,0);songs=keepSp();await ingest(files);toast(`${Object.values(songs).filter(s=>!s.sp).length} músicas carregadas`);
 }
 $('#folderBtn').onclick=async()=>{
   if(!localStorage.getItem('k_dirHint')){
@@ -707,13 +732,21 @@ $('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos
 let lyr={synced:false,lines:[]},offset=0,syncing=false,syncIdx=0,syncBackup=null,lastIdx=-2,curEl=null,cdEl=null,seeking=false;
 function setView(v){document.body.dataset.view=v;if(v==='lobby'){media.classList.remove('show');requestAnimationFrame(renderLobby);$('#title').textContent='Telão'}}
 async function loadSongFor(song){
-  curSong=song;if(media.src)URL.revokeObjectURL(media.src);
-  media.src=URL.createObjectURL(song.file);$('#title').textContent=songLabel(song);
+  if(spOn&&spStarted)KSP.pause();
+  if(mediaEl.src){mediaEl.pause();URL.revokeObjectURL(mediaEl.src)}
+  curSong=song;spOn=!!song.sp;
+  if(spOn){mediaEl.removeAttribute('src');mediaEl.load();spStarted='';spPend=0;spEnded='';Object.assign(KSP.st,{paused:true,pos:0,ts:performance.now(),dur:song.sp.dur,uri:song.sp.uri});setTimeout(()=>mH.loadedmetadata&&mH.loadedmetadata())}
+  else media.src=URL.createObjectURL(song.file);
+  $('#title').textContent=(spOn?'🟢 ':'')+songLabel(song);
+  // modo Spotify: o áudio não passa pelo notebook, então não dá para remover a voz nem gravar a música
+  $('#vocal').disabled=spOn;$('#vocal').title=spOn?'Indisponível com Spotify (use uma versão karaokê)':'';
+  if(!(rec&&rec.state==='recording')){$('#recBtn').disabled=spOn;$('#recBtn').title=spOn?'Indisponível com Spotify':''}
   $('#lq').value=songLabel(song).replace(/[_]+/g,' ').replace(/\(.*?\)|\[.*?\]/g,'').replace(/\s+-\s+/,' ').trim();$('#lres').innerHTML='';
   offset=+(localStorage.getItem('ko:'+song.id)||0)||0;updOffset();
   const cached=localStorage.getItem('kl:'+song.id);
   const t=cached??(song.lrc?await song.lrc.text():'');
   lyr=parseLyrics(t);syncing=false;$('#syncBar').classList.remove('show');lastIdx=-2;renderLyricsStatic();updLyrBtns();
+  if(song.sp&&cached==null)spLyrics(song);
 }
 async function previewSong(id){
   if(busy){toast('Tem uma apresentação rolando');return}
@@ -753,7 +786,7 @@ async function applyLyrics(text){
 }
 $('#lyrFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)applyLyrics(await f.text())};
 $('#usePaste').onclick=()=>{const t=$('#paste').value.trim();if(t)applyLyrics(t)};
-$('#dlLrc').onclick=()=>{if(!lyr.synced)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toLRC()],{type:'text/plain'}));a.download=(curSong?baseName(curSong.file.name):'letra')+'.lrc';a.click()};
+$('#dlLrc').onclick=()=>{if(!lyr.synced)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toLRC()],{type:'text/plain'}));a.download=(curSong?(curSong.file?baseName(curSong.file.name):songLabel(curSong)):'letra')+'.lrc';a.click()};
 function updLyrBtns(){$('#syncBtn').disabled=!lyr.lines.length;$('#dlLrc').disabled=!lyr.synced}
 function updOffset(){$('#offV').textContent=(offset>0?'+':'')+offset.toFixed(1)+'s'}
 function nudge(d){
@@ -836,7 +869,7 @@ function expectedNow(){
 // chroma da música: força de cada uma das 12 classes de nota (Dó..Si) agora, suavizada em ~250 ms
 function chromaTick(dt){
   chromaMask=null;
-  if(!chromaAn||!media.src||media.paused)return;
+  if(!chromaAn||spOn||!media.src||media.paused)return; // Spotify: o áudio não passa pelo notebook → sem harmonia
   if(!chromaPc){const bw=ctx.sampleRate/chromaAn.fftSize;chromaPc=new Int8Array(chromaBuf.length).fill(-1);
     for(let i=1;i<chromaBuf.length;i++){const f=i*bw;if(f>=K.chromaMinHz&&f<=K.chromaMaxHz)chromaPc[i]=pcOf(69+12*Math.log2(f/440))}}
   chromaAn.getFloatFrequencyData(chromaBuf);
@@ -1203,7 +1236,11 @@ $('#autoIntro').onchange=()=>{S.autoIntro=$('#autoIntro').checked;save()};
 function introEnd(){if(!lyr.synced||!lyr.lines.length)return 0;const f=lyr.lines.find(l=>l.text&&l.t!=null);return f?f.t-offset-3:0}
 function skipIntro(quiet){const t=introEnd();if(t>media.currentTime+2){media.currentTime=t;if(busy)singStart=t;if(!quiet)toast('⏩ Introdução pulada');return true}return false}
 $('#introBtn').onclick=()=>{if(!skipIntro())toast('Sem introdução para pular')};
-function unfade(){fading=false;if(fadeGain){fadeGain.gain.cancelScheduledValues(0);fadeGain.gain.value=1}}
+function unfade(){fading=false;if(fadeGain){fadeGain.gain.cancelScheduledValues(0);fadeGain.gain.value=1}
+  if(spFading){clearInterval(spFading);spFading=null;KSP.setVolume(+$('#music').value/100)}}
+// Spotify não passa pelo Web Audio: o fade é pelo volume do player (4 s)
+function spFadeOut(){if(spFading||!KSP.player)return;const v0=+$('#music').value/100,t0=performance.now();
+  spFading=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/4000);KSP.setVolume(v0*(1-k))},200)}
 function startLimit(){singStart=media.currentTime;limitHit=false;unfade()}
 function tickLimit(){
   const el=$('#tLeft'),lim=+(S.limit??180);
@@ -1211,7 +1248,7 @@ function tickLimit(){
   if(!busy||!lim||phaseOpen||!media.src||limitHit){el.classList.remove('show');return}
   const left=lim-(media.currentTime-singStart);
   if(left<=20){el.textContent='⏱ '+Math.max(0,Math.ceil(left))+'s';el.classList.add('show')}else el.classList.remove('show');
-  if(left<=4&&!fading&&!media.paused&&fadeGain){fading=true;fadeGain.gain.setTargetAtTime(0,ctx.currentTime,1.1)}
+  if(left<=4&&!fading&&!media.paused&&(fadeGain||spOn)){fading=true;if(spOn)spFadeOut();else fadeGain.gain.setTargetAtTime(0,ctx.currentTime,1.1)}
   else if(left>4&&fading)unfade();
   if(left<=0){limitHit=true;el.classList.remove('show');finishPerformance().finally(unfade)}
 }
@@ -1364,12 +1401,99 @@ function openTela(){
 $('#telaBtn').onclick=openTela;
 addEventListener('beforeunload',()=>{try{TW&&TW.close()}catch(e){}});
 
+/* ===================== modo Spotify ===================== */
+async function spReady(){
+  if(KSP.deviceId)return true;
+  try{await KSP.initPlayer('Karaokê '+C.MARCA,spState,e=>toast('Spotify: '+e.message));KSP.activate();applyAll();return true}
+  catch(e){kAlert('O player do Spotify não conectou.\n\nConfira a internet e se a conta é Premium. Depois clique em ▶ de novo.\n\nDetalhe: '+e.message,'Spotify','🟢');return false}
+}
+async function spPlay(){
+  if(!await spReady())return;KSP.activate();
+  const uri=curSong.sp.uri;spEnded='';
+  try{if(spStarted!==uri){spStarted=uri;await KSP.playUri(uri,spPend)}else await KSP.resume()}
+  catch(e){spStarted='';KSP.st.paused=true;toast('Spotify não tocou: '+e.message);return}
+  mH.play&&mH.play();
+}
+function spPause(){if(spStarted)KSP.pause();else KSP.st.paused=true;mH.pause&&mH.pause()}
+function spSeek(v){v=Math.max(0,v);if(spStarted&&spStarted===curSong?.sp?.uri)KSP.seek(v);else{spPend=v;Object.assign(KSP.st,{pos:v,ts:performance.now()})}}
+function spFinished(){if(spEnded===spStarted)return;spEnded=spStarted;KSP.st.pos=KSP.st.dur;KSP.st.paused=true;mH.pause&&mH.pause();mH.ended&&mH.ended()}
+let spLastPos=0,spSyncT=0;
+function spState(st){
+  if(!spOn||!spStarted)return;
+  const was=spLastPos;spLastPos=st.pos;
+  if(st.paused&&st.pos<1&&st.dur&&was>st.dur-3){spFinished();return} // o SDK volta para 0 quando a faixa acaba
+  (st.paused?mH.pause:mH.play)?.();
+}
+function spTick(){
+  if(!spOn||!spStarted||KSP.st.paused)return;
+  const p=KSP.pos();spLastPos=p;
+  if(KSP.st.dur&&p>=KSP.st.dur-0.3){KSP.pause();spFinished();return}
+  const now=performance.now();if(now-spSyncT>2000){spSyncT=now;KSP.sync().catch(()=>{})} // reancora a posição a cada 2 s
+}
+// letra: lrclib pelo título/artista original, escolhendo a sincronizada de duração mais parecida
+async function spLyrics(song){
+  try{
+    const q=song.artist?{track_name:song.title,artist_name:song.artist}:{q:song.title};
+    let d=await (await fetch('https://lrclib.net/api/search?'+new URLSearchParams(q))).json();
+    if(!d.some(x=>x.syncedLyrics)&&song.artist)d=await (await fetch('https://lrclib.net/api/search?'+new URLSearchParams({q:song.title+' '+song.artist}))).json();
+    const best=d.filter(x=>x.syncedLyrics).sort((a,b)=>Math.abs((a.duration||0)-song.sp.dur)-Math.abs((b.duration||0)-song.sp.dur))[0];
+    if(!best){if(curSong===song)toast('Não achei letra sincronizada para esta faixa. Busque na barra lateral.');return}
+    try{localStorage.setItem('kl:'+song.id,best.syncedLyrics)}catch(e){}
+    if(Math.abs((best.duration||song.sp.dur)-song.sp.dur)>4&&curSong===song)toast('Letra de uma versão com duração diferente: ajuste com + / − se precisar');
+    if(curSong===song){lyr=parseLyrics(best.syncedLyrics);lastIdx=-2;renderLyricsStatic();updLyrBtns()}
+    renderCatalog();store.upsert('catalog',[{id:song.id,title:song.title,artist:song.artist||'',has_lyrics:true}]).catch(()=>{});
+  }catch(e){}
+}
+const spEntry=t=>{const c=KSP.clean(t);return{id:'sp-'+t.id,title:c.title,artist:c.artist,sp:{uri:t.uri,id:t.id,dur:(t.duration_ms||0)/1000,name:t.name,spArtist:c.spArtist}}};
+let spExtra=[];try{spExtra=JSON.parse(localStorage.getItem('ksp_extra')||'[]')}catch(e){}
+let spInfo='';
+async function loadSpotifyCatalog(){
+  spInfo='Carregando…';spUI();
+  try{
+    let n=0;
+    if(C.SPOTIFY_PLAYLIST_ID){const p=await KSP.playlist(C.SPOTIFY_PLAYLIST_ID);p.items.forEach(t=>{const e=spEntry(t);songs[e.id]=e});n=p.items.length;spInfo=`Playlist “${p.name}”: ${n} faixas`}
+    else spInfo='Sem playlist configurada (SPOTIFY_PLAYLIST_ID)';
+    spExtra.forEach(e=>songs[e.id]=e);if(spExtra.length)spInfo+=` + ${spExtra.length} da busca`;
+    renderCatalog();await publishCatalog();
+  }catch(e){spInfo='Erro: '+e.message+(e.status===403||e.status===404?' — a playlist precisa ser SUA (copie as faixas para uma playlist da sua conta).':'')}
+  spUI();
+}
+function spUI(){
+  if(!SP_OK)return;$('#spSec').style.display='';const on=KSP.isLogged();
+  $('#spLogin').textContent=on?'🔄 Recarregar playlist do Spotify':'🟢 Conectar Spotify (Premium)';
+  $('#spOut').style.display=$('#spSearchRow').style.display=on?'':'none';
+  $('#spStat').textContent=on?spInfo:'Toca versões karaokê do Spotify no lugar dos arquivos. Sem remover voz, sem gravar a música e sem nota de harmonia.';
+}
+if(SP_OK){
+  $('#spLogin').onclick=()=>KSP.isLogged()?loadSpotifyCatalog():KSP.login().catch(e=>kAlert(e.message,'Spotify','🟢'));
+  $('#spOut').onclick=async()=>{if(!await kConfirm('Desconectar o Spotify deste notebook? As faixas do Spotify saem do catálogo.',{ok:'Desconectar',icon:'🟢'}))return;
+    KSP.logout();songs=Object.fromEntries(Object.entries(songs).filter(([,s])=>!s.sp));renderCatalog();publishCatalog();spUI()};
+  const spSearch=async()=>{const q=$('#spQ').value.trim(),out=$('#spRes');if(!q)return;out.innerHTML='<div class="it"><small>Buscando…</small></div>';
+    try{const r=await KSP.search(q);
+      out.innerHTML=r.length?r.map(t=>{const e=spEntry(t);return `<div class="it"><span class="t" title="${esc(t.name)} · ${esc(e.sp.spArtist)}">🟢 ${esc(songLabel(e))}<small style="display:block;color:var(--dim)">${esc(e.sp.spArtist)} · ${fmt(e.sp.dur)}</small></span><button data-spp="${esc(t.id)}" title="Tocar para testar">▶</button><button data-spa="${esc(t.id)}">+ catálogo</button></div>`}).join('')
+        :'<div class="it"><small>Nenhuma versão karaokê/instrumental. Tente outro nome.</small></div>';
+      out._res=Object.fromEntries(r.map(t=>[t.id,t]));
+    }catch(e){out.innerHTML='<div class="it"><small>Erro: '+esc(e.message)+'</small></div>'}};
+  $('#spQ').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();spSearch()}};
+  $('#spRes').onclick=async e=>{const out=$('#spRes'),id=e.target.dataset.spa||e.target.dataset.spp;if(!id||!out._res?.[id])return;
+    const en=spEntry(out._res[id]);
+    if(e.target.dataset.spa){songs[en.id]=en;if(!spExtra.some(x=>x.id===en.id)){spExtra.push(en);try{localStorage.setItem('ksp_extra',JSON.stringify(spExtra))}catch(err){}}
+      renderCatalog();await publishCatalog();e.target.textContent='✓ no catálogo';e.target.disabled=true;spLyricsPrefetch(en)}
+    else{songs[en.id]=songs[en.id]||en;previewSong(en.id)}};
+  addEventListener('click',()=>KSP.activate(),true); // o Chrome só libera o som do player depois de um clique
+  (async()=>{
+    try{if(await KSP.handleRedirect())toast('Spotify conectado ✅')}catch(e){kAlert(e.message,'Spotify','🟢')}
+    spUI();if(KSP.isLogged()){await loadSpotifyCatalog();spReady()}
+  })();
+}
+function spLyricsPrefetch(song){if(localStorage.getItem('kl:'+song.id)==null)spLyrics(song)}
+
 /* loop */
 // com a janela de controle minimizada o Chrome pausa o requestAnimationFrame: um timer mantém a letra da TV andando
 setInterval(()=>{if(document.hidden)step()},40);
 function frame(){requestAnimationFrame(frame);step()}
 function step(){
-  scoreTick();telaTick();
+  spTick();scoreTick();telaTick();
   mics.forEach((m,i)=>{if(!m)return;m.raw.getFloatTimeDomainData(m.rbuf);let s=0;for(const x of m.rbuf)s+=x*x;$('#meter'+(i+1)).style.width=Math.min(100,Math.sqrt(s/m.rbuf.length)*300)+'%'});
   tickLimit();
   if(media.src){$('#time').textContent=fmt(media.currentTime)+' / '+fmt(media.duration||0);if(!seeking)$('#seek').value=media.currentTime}

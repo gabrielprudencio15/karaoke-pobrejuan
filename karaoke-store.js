@@ -20,6 +20,12 @@ window.KARAOKE_CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_Gb5Hz3S8QjoQkDGLcHji8g_g4i9gH0u', // chave "publishable"/anon (NUNCA a service_role / secret)
   TELAO_EMAIL: 'karaoke-telao@pobrejuan.com.br', // usuário do telão no Supabase (a senha você cria lá; nunca coloque a senha aqui)
 
+  // Spotify (opcional). Client ID do app criado em developer.spotify.com (não é segredo).
+  // Playlist: tem que ser SUA (ou colaborativa) — o Spotify só libera as faixas de playlist própria.
+  // Aceita o ID ou o link inteiro da playlist.
+  SPOTIFY_CLIENT_ID: '',
+  SPOTIFY_PLAYLIST_ID: '',
+
   // Só a máquina conta ponto. Aplausos e votos aparecem na tela só para animar (peso 0).
   // Se o microfone falhar, a pessoa fica com a nota do público (ou dos aplausos).
   // Para voltar a misturar: { maquina: 0.60, publico: 0.25, aplausos: 0.15 }

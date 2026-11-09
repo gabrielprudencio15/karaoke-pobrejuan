@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste do Spotify · Karaokê</title>
+<link rel="icon" href="favicon.svg">
+<script src="karaoke-store.js?v=202611091500"></script>
+<script src="spotify.js?v=202611091500"></script>
+<style>
+:root{--bg:#0b0908;--panel:#161210;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--ok:#4cc38a;--bad:#ff7a7a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:24px 16px}
+main{max-width:760px;margin:0 auto}h1{font-size:24px;margin:0 0 4px}p{color:var(--dim);margin:6px 0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+button{background:var(--acc);color:#140a06;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:default}
+button.sec{background:transparent;color:var(--txt);border:1px solid var(--line);font-weight:500}
+code{background:#0e0b0a;border:1px solid var(--line);border-radius:6px;padding:2px 6px;word-break:break-all}
+.t{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.t:first-child{border:0}.t b{min-width:24px}.t small{display:block;color:var(--dim)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.wait{color:var(--dim)}ul{margin:6px 0;padding-left:20px;color:var(--dim)}
+</style>
+</head>
+<body><main>
+<h1>🟢 Teste do Spotify</h1>
+<p>Confere se a sua conta e o seu app do Spotify liberam tudo que o modo Spotify do karaokê usa. Nada é salvo fora deste navegador.</p>
+
+<div class="card" id="cfg"></div>
+<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="login">Entrar com Spotify</button><button id="run" class="sec">Rodar os testes de novo</button><button id="play" class="sec">▶ Testar o player (toca 8 s)</button><button id="out" class="sec">Sair</button></div></div>
+<div class="card" id="res"><div class="t"><b class="wait">…</b><div>Entre com o Spotify para rodar os testes.</div></div></div>
+
+<script>
+const C=window.KARAOKE_CONFIG||{},$=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+$('#cfg').innerHTML=`<b>Configuração</b>
+<ul><li>Client ID: ${C.SPOTIFY_CLIENT_ID?'<span class="ok">preenchido</span>':'<span class="bad">vazio — preencha SPOTIFY_CLIENT_ID no karaoke-store.js</span>'}</li>
+<li>Playlist: ${C.SPOTIFY_PLAYLIST_ID?'<code>'+esc(KSP.playlistId(C.SPOTIFY_PLAYLIST_ID))+'</code>':'<span class="wait">vazia (o teste da playlist fica de fora)</span>'}</li>
+<li>No painel do app (developer.spotify.com → seu app → Settings → Redirect URIs), cadastre estes dois endereços:<br><code>${esc(base)}spotify-teste.html</code><br><code>${esc(base)}karaoke.html</code></li>
+<li>Em <b>User Management</b>, adicione o e-mail da conta Premium que vai logar.</li></ul>`;
+const rows=[];const R=(ok,txt,det='')=>{rows.push(`<div class="t"><b class="${ok===true?'ok':ok===false?'bad':'wait'}">${ok===true?'✅':ok===false?'❌':'⏳'}</b><div>${txt}${det?'<small>'+det+'</small>':''}</div></div>`);$('#res').innerHTML=rows.join('')};
+let first=null;
+async function tests(){
+  rows.length=0;
+  try{const me=await KSP.me();R(true,'Login funcionando',`Conta: ${esc(me.display_name||me.id)}`)}catch(e){R(false,'Login / GET /me',esc(e.message));return}
+  try{const t0=performance.now(),r=await KSP.search('sossego');first=r[0]||first;
+    R(r.length>0,`Busca (só versões karaokê/instrumental): ${r.length} faixas em ${Math.round(performance.now()-t0)} ms`,r.slice(0,5).map(t=>{const c=KSP.clean(t);return esc((c.artist||'?')+' - '+c.title)+' <i>('+esc(t.name)+' · '+esc(c.spArtist)+')</i>'}).join('<br>')||'nenhuma faixa passou no filtro')}
+  catch(e){R(false,'Busca',esc(e.message))}
+  if(C.SPOTIFY_PLAYLIST_ID){try{const p=await KSP.playlist(C.SPOTIFY_PLAYLIST_ID);first=first||p.items[0];
+      R(p.items.length>0,`Playlist “${esc(p.name)}”: ${p.items.length} faixas`,`Dona: ${esc(p.owner)}`)}
+    catch(e){R(false,'Playlist',esc(e.message)+(e.status===403||e.status===404?'<br>Provável causa: a playlist não é sua. Crie uma playlist na SUA conta e copie as faixas para ela.':''))}}
+  if(first){const c=KSP.clean(first);try{const d=await (await fetch('https://lrclib.net/api/search?'+new URLSearchParams({track_name:c.title,artist_name:c.artist}))).json();
+      R(d.some(x=>x.syncedLyrics),`Letra no lrclib para “${esc(c.title)}”`,d.length?d.length+' resultados, '+d.filter(x=>x.syncedLyrics).length+' sincronizados':'nada encontrado (o telão permite buscar manualmente)')}
+    catch(e){R(false,'lrclib',esc(e.message))}}
+  R(null,'Player: clique em “▶ Testar o player”','precisa de um clique por causa da regra de autoplay do Chrome');
+}
+$('#login').onclick=()=>KSP.login().catch(e=>alert(e.message));
+$('#out').onclick=()=>{KSP.logout();location.reload()};
+$('#run').onclick=tests;
+$('#play').onclick=async()=>{
+  if(!first){alert('Rode os testes primeiro (precisa achar uma faixa)');return}
+  rows.pop();R(null,'Player: conectando…');
+  try{const id=await KSP.initPlayer('Teste karaokê',null,e=>{rows.pop();R(false,'Player',esc(e.message))});KSP.activate();
+    rows.pop();R(true,'Player conectado',`device ${esc(id)}`);
+    await KSP.playUri(first.uri,30);await new Promise(r=>setTimeout(r,3000));await KSP.sync();const p1=KSP.st.pos;
+    await new Promise(r=>setTimeout(r,5000));await KSP.sync();const p2=KSP.st.pos;await KSP.pause();
+    R(p2-p1>3,`Tocou “${esc(first.name)}” e a posição andou ${(p2-p1).toFixed(1)} s em 5 s`,'A letra do karaokê segue essa posição.')}
+  catch(e){rows.pop();R(false,'Player',esc(e.message))}
+};
+(async()=>{
+  try{await KSP.handleRedirect()}catch(e){R(false,'Login',esc(e.message));return}
+  $('#login').style.display=KSP.isLogged()?'none':'';$('#run').disabled=$('#play').disabled=$('#out').disabled=!KSP.isLogged();
+  if(KSP.isLogged())tests();
+})();
+</script>
+</main></body>
+</html>
