@@ -159,11 +159,15 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 .calr em{font-style:normal;text-align:right;font-weight:700}.calr small{grid-column:1/-1;color:var(--dim);font-size:11px;margin-top:-4px}
 .calsc{text-align:right;font-size:14px;margin-top:6px}.calsc b{font-size:28px;color:var(--acc);margin-left:6px}
 .calw{color:var(--dim);margin:8px 0}
-#catModal:not(.show){display:none}
-#catModal .catbox{width:min(760px,100%);height:min(86vh,900px);text-align:left;display:flex;flex-direction:column;gap:8px;padding:18px}
+#catModal:not(.show),#spModal:not(.show){display:none}
+#catModal .catbox,#spModal .catbox{width:min(760px,100%);height:min(86vh,900px);text-align:left;display:flex;flex-direction:column;gap:8px;padding:18px}
 .catHead{display:flex;justify-content:space-between;align-items:center}.catHead .kt{margin:0}
 .catTools{display:flex;gap:8px;flex-wrap:wrap}.catTools>*{flex:1;text-align:center;white-space:nowrap}
 .catbox small{color:var(--dim)}
+#spModal #spRes{max-height:none;flex:1;min-height:120px;margin-top:0}#spModal #spRes .it{font-size:14px;padding:8px 10px}
+#spModal #spQ{width:100%;font-size:15px;padding:10px 12px}#spModal .row{margin:0}
+#spModal #spSearchRow{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+#spModal #spCfg{border-top:1px solid var(--line);padding-top:8px;max-height:45%;overflow:auto}#spModal #spCfg[open]{flex:0 0 auto}
 #catSearch{width:100%;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:15px;outline:none}#catSearch:focus{border-color:var(--acc)}#catSearch::placeholder{color:var(--dim)}
 #catList{max-height:none;flex:1;min-height:0;margin-top:0}#catList .it{font-size:14px;padding:8px 10px}
 .spd{display:flex;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}.spd small{display:block;color:var(--dim)}
@@ -228,21 +232,8 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <input id="folderInput" type="file" webkitdirectory multiple hidden>
   <div id="spSec" style="display:none">
     <h2>Spotify</h2>
-    <button id="spLogin" class="full">🟢 Conectar Spotify (Premium)</button>
-    <small id="spStat"></small>
-    <div id="spSearchRow"><div class="row"><input id="spQ" type="text" placeholder="Buscar versão karaokê no Spotify (Enter)"></div>
-    <div class="list" id="spRes"></div></div>
-    <details id="spCfg" style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:var(--dim)">⚙️ Configurar / testar Spotify</summary>
-      <small>1. No developer.spotify.com crie um app (marque <b>Web API</b> e <b>Web Playback SDK</b>).<br>2. Em <b>Redirect URIs</b> cadastre este endereço:</small>
-      <div class="row"><code id="spRedir" style="font-size:11px;word-break:break-all;flex:1"></code><button id="spCopy" title="Copiar">📋</button></div>
-      <small>3. Em <b>User Management</b> adicione o e-mail da conta Premium.<br>4. Cole aqui o Client ID e o link de uma playlist <b>sua</b>:</small>
-      <div class="row"><input id="spCid" type="text" placeholder="Client ID (32 letras/números)" autocomplete="off"></div>
-      <div class="row"><input id="spPl" type="text" placeholder="Link da playlist (opcional)"></div>
-      <button id="spSave" class="full pri">Salvar</button>
-      <button id="spTest" class="full" style="margin-top:6px">🧪 Testar conexão (toca 6 s)</button>
-      <div id="spDiag"></div>
-      <button id="spOut" class="full" style="margin-top:6px;font-size:12px">Desconectar Spotify</button>
-    </details>
+    <button id="spOpen" class="full">🟢 Spotify</button>
+    <small id="spSide"></small>
   </div>
 
   <h2>Adicionar à fila</h2>
@@ -360,6 +351,24 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <small>Dica: nomeie como <b>Artista - Música.mp3</b>. Letra .lrc com o mesmo nome entra junto. 📝 = tem letra · 🟢 = Spotify</small>
   <input id="catSearch" type="text" placeholder="Buscar no catálogo (0 músicas)">
   <div class="list" id="catList"></div>
+</div></div>
+<div id="spModal" class="kdlg"><div class="kbox catbox" role="dialog" aria-modal="true" aria-label="Spotify">
+  <div class="catHead"><span class="kt">🟢 Spotify</span><button id="spClose" title="Fechar (Esc)">✕</button></div>
+    <button id="spLogin" class="full">🟢 Conectar Spotify (Premium)</button>
+    <small id="spStat"></small>
+    <div id="spSearchRow"><div class="row"><input id="spQ" type="text" placeholder="Buscar versão karaokê no Spotify (Enter)"></div>
+    <div class="list" id="spRes"></div></div>
+    <details id="spCfg"><summary style="cursor:pointer;font-size:13px;color:var(--dim)">⚙️ Configurar / testar Spotify</summary>
+      <small>1. No developer.spotify.com crie um app (marque <b>Web API</b> e <b>Web Playback SDK</b>).<br>2. Em <b>Redirect URIs</b> cadastre este endereço:</small>
+      <div class="row"><code id="spRedir" style="font-size:11px;word-break:break-all;flex:1"></code><button id="spCopy" title="Copiar">📋</button></div>
+      <small>3. Em <b>User Management</b> adicione o e-mail da conta Premium.<br>4. Cole aqui o Client ID e o link de uma playlist <b>sua</b>:</small>
+      <div class="row"><input id="spCid" type="text" placeholder="Client ID (32 letras/números)" autocomplete="off"></div>
+      <div class="row"><input id="spPl" type="text" placeholder="Link da playlist (opcional)"></div>
+      <button id="spSave" class="full pri">Salvar</button>
+      <button id="spTest" class="full" style="margin-top:6px">🧪 Testar conexão (toca 6 s)</button>
+      <div id="spDiag"></div>
+      <button id="spOut" class="full" style="margin-top:6px;font-size:12px">Desconectar Spotify</button>
+    </details>
 </div></div>
 <div id="calPanel"><div class="calt">🎯 Calibração da nota <button id="calClose" title="Fechar">✕</button></div>
   <div class="calb"><button id="calLeak">📏 Medir vazamento (6 s, sem cantar)</button><button id="calReset">🔄 Zerar medição</button></div>
@@ -1240,6 +1249,9 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 document.addEventListener('click',e=>{const b=e.target.closest('button');b&&b.blur()});
 document.addEventListener('change',e=>{if(e.target.tagName==='SELECT'||e.target.type==='checkbox'||e.target.type==='range')e.target.blur()});
 document.addEventListener('keydown',e=>{
+  // janelas de músicas/Spotify abertas: Esc fecha e os atalhos do telão ficam desligados
+  const modal=document.querySelector('#catModal.show,#spModal.show');
+  if(modal&&!document.querySelector('.kdlg:not(#catModal):not(#spModal)')){if(e.key==='Escape'){e.preventDefault();modal.classList.remove('show')}return}
   const tag=e.target.tagName,typing=(tag==='INPUT'&&!['range','checkbox','button','file'].includes(e.target.type))||tag==='TEXTAREA';
   if(typing){if(e.key==='Escape')e.target.blur();return}
   if(e.key.toLowerCase()==='t'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();toggleTV();return}
@@ -1491,6 +1503,8 @@ function spUI(){
   $('#spLogin').style.display=cfg?'':'none';if(!cfg)$('#spCfg').open=true;
   $('#spLogin').textContent=on?'🔄 Recarregar playlist do Spotify':'🟢 Conectar Spotify (Premium)';
   $('#spOut').style.display=$('#spSearchRow').style.display=on?'':'none';
+  $('#spOpen').textContent=on?'🟢 Spotify: buscar músicas':'🟢 Spotify (conectar)';
+  $('#spSide').textContent=!cfg?'Falta configurar':on?spInfo:'Desconectado';
   $('#spStat').textContent=!cfg?'Primeiro configure abaixo (Client ID do app do Spotify).':on?spInfo:'Toca versões karaokê do Spotify no lugar dos arquivos. Sem remover voz, sem gravar a música e sem nota de harmonia.';
 }
 if(SP_OK){
@@ -1508,7 +1522,12 @@ if(SP_OK){
     const en=spEntry(out._res[id]);
     if(e.target.dataset.spa){songs[en.id]=en;if(!spExtra.some(x=>x.id===en.id)){spExtra.push(en);try{localStorage.setItem('ksp_extra',JSON.stringify(spExtra))}catch(err){}}
       renderCatalog();await publishCatalog();e.target.textContent='✓ no catálogo';e.target.disabled=true;spLyricsPrefetch(en)}
-    else{songs[en.id]=songs[en.id]||en;previewSong(en.id)}};
+    else{songs[en.id]=songs[en.id]||en;spShow(false);previewSong(en.id)}};
+  // busca e configuração do Spotify em janela por cima (abre só quando precisa)
+  window.spShow=on=>{$('#spModal').classList.toggle('show',on);if(on)setTimeout(()=>(KSP.isLogged()?$('#spQ'):$('#spLogin')).focus(),30)};
+  $('#spOpen').onclick=()=>spShow(true);$('#spClose').onclick=()=>spShow(false);
+  $('#spModal').onclick=e=>{if(e.target.id==='spModal')spShow(false)};
+  $('#spModal').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')spShow(false)});
   // configuração direto no telão (fica salva neste notebook)
   $('#spRedir').textContent=KSP.redirectUri();$('#spCid').value=KSP.clientId();$('#spPl').value=KSP.playlistCfg();
   $('#spCopy').onclick=async()=>{try{await navigator.clipboard.writeText(KSP.redirectUri());toast('Endereço copiado ✅ Cole em Redirect URIs no painel do Spotify')}catch(e){toast('Selecione o endereço e copie com Ctrl+C')}};
