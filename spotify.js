@@ -75,11 +75,11 @@
     // tira "(Karaoke Version)", "- Originally Performed by X" etc. e acha o artista original
     clean(t) {
       const name = t.name || '', album = t.album?.name || '', spArtist = (t.artists || []).map(a => a.name).join(', ');
-      const re = /(?:originally performed by|in the style of|as made famous by|made famous by|popularized by|no estilo de|popularizad[ao] por)\s+([^()\[\]\-–|]+?)(?=\s*(?:[()\[\]\-–|]|karaok|instrumental|version|vers[aã]o|$))/i;
+      const re = /(?:originally performed by|in the style of|as made famous by|made famous by|as made popular by|made popular by|as popularized by|popularized by|no estilo de|popularizad[ao] por)\s+([^()\[\]\-–|]+?)(?=\s*(?:[()\[\]\-–|]|karaok|instrumental|version|vers[aã]o|$))/i;
       const m = name.match(re) || album.match(re);
-      let title = name.replace(/\s*[(\[][^)\]]*(karaok|instrumental|originally|style of|made famous|popularized|version|vers[aã]o|playback|backing)[^)\]]*[)\]]/ig, '')
-        .replace(/\s+[-–]\s+.*(karaok|instrumental|originally|style of|made famous|popularized|version|vers[aã]o|playback|backing).*$/i, '').trim();
-      const labelArtist = /karaok|sing2|ameritz|backing|instrumental|playback|zzang|sunfly|hits/i.test(spArtist);
+      let title = name.replace(/\s*[(\[][^)\]]*(karaok|instrumental|originally|style of|made famous|made popular|popularized|version|vers[aã]o|playback|backing)[^)\]]*[)\]]/ig, '')
+        .replace(/\s+[-–]\s+.*(karaok|instrumental|originally|style of|made famous|made popular|popularized|version|vers[aã]o|playback|backing).*$/i, '').trim();
+      const labelArtist = /karaok|sing2|ameritz|backing|instrumental|playback|zzang|sunfly|hits|hitmaker/i.test(spArtist);
       const artist = m ? m[1].trim() : (labelArtist ? '' : spArtist);
       return { title: title || name, artist, spArtist };
     },
