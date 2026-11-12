@@ -30,8 +30,9 @@ window.KARAOKE_CONFIG = {
   // Se o microfone falhar, a pessoa fica com a nota do público (ou dos aplausos).
   // Para voltar a misturar: { maquina: 0.60, publico: 0.25, aplausos: 0.15 }
   PESOS: { maquina: 1, publico: 0, aplausos: 0 },
-  SEGUNDOS_VOTACAO: 25,         // 0 desliga a votação do público
-  SEGUNDOS_APLAUSO: 6,          // 0 desliga o medidor de aplausos
+  SEGUNDOS_VOTACAO: 6,          // 0 desliga a votação do público
+  SEGUNDOS_APLAUSO: 4,          // 0 desliga o medidor de aplausos
+  SEGUNDOS_NOTA_FINAL: 6,       // tempo da tela da nota final antes de voltar ao telão
   APLAUSO_DB_MIN: -50,          // silêncio do salão (ajuste no ensaio)
   APLAUSO_DB_MAX: -12,          // gritaria máxima (ajuste no ensaio)
   RANKING_UNIDADES: 'soma',     // 'soma' (premia participação) ou 'media' (média das notas)
