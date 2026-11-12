@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611122330"></script>
+<script src="karaoke-store.js?v=202611130100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -270,7 +270,7 @@ function renderPlacar(){
   const us=UNITS.map(u=>{const ps=P.filter(p=>p.unit===u.id&&p.final!=null),sum=ps.reduce((a,p)=>a+p.final,0);return{...u,count:ps.length,avg:ps.length?Math.round(sum/ps.length):0,sum}})
     .sort((a,b)=>soma?b.sum-a.sum:(b.avg-a.avg)||(b.count-a.count));
   const max=Math.max(1,...us.map(u=>soma?u.sum:u.avg)),medal=['🥇','🥈','🥉'];
-  $('#units').innerHTML=us.map((u,i)=>`<div class="ub"><div class="top"><span>${u.count?medal[i]:''} ${esc(u.nome)}</span><span>${soma?u.sum+' pts':(u.count?u.avg:'—')}</span></div><div class="track"><div class="fill" style="width:${(soma?u.sum:u.avg)/max*100}%;background:${u.cor}"></div></div><small>${u.count} apresentações</small></div>`).join('');
+  $('#units').innerHTML=us.map((u,i)=>`<div class="ub"><div class="top"><span>${u.count?medal[i]:''} ${esc(u.nome)}</span><span>${soma?u.sum+' pts':(u.count?u.avg:'—')}</span></div><div class="track"><div class="fill" style="width:${(soma?u.sum:u.avg)/max*100}%;background:${u.cor}"></div></div><small>${u.count} apresentaç${u.count===1?"ão":"ões"}</small></div>`).join('');
   const tops=[...P].filter(p=>p.final!=null).sort((a,b)=>b.final-a.final).slice(0,10);
   $('#tops').innerHTML=tops.length?tops.map(p=>`<li><b style="color:var(--acc)">${p.final}</b> · ${esc(p.name)}${chip(p.unit)}<br><small>${esc(p.song_title||'')}</small></li>`).join(''):'<p class="dim" style="margin-left:-22px">Ninguém cantou ainda.</p>';
   $('#meName').textContent=me.name;$('#meUnit').innerHTML=chip(me.unit);

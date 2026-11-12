@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611122330"></script>
-<script src="spotify.js?v=202611122330"></script>
+<script src="karaoke-store.js?v=202611130100"></script>
+<script src="spotify.js?v=202611130100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -402,6 +402,15 @@ function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null,danger=
 const kAlert=(msg,title='',icon='⚠️')=>kDialog({msg,title,icon});
 const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
 const mediaEl=$('#media'),box=$('#lyrics');
+/* Relógio de fundo: com a janela de controle minimizada/escondida (TV na outra janela), o Chrome congela o
+   requestAnimationFrame e atrasa os timers. Um Worker não é congelado: ele dá o ritmo do show e da letra. */
+const bgTick=new Set();
+// cada espera é atendida por quem chegar primeiro: o requestAnimationFrame (janela visível) ou o worker (janela escondida)
+const raf=f=>{let done=false;const run=now=>{if(done)return;done=true;bgTick.delete(run);f(now)};bgTick.add(run);requestAnimationFrame(run)};
+try{const wk=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),40)'],{type:'text/javascript'})));
+  wk.onmessage=()=>{if(!document.hidden)return;const fs=[...bgTick];bgTick.clear();const now=performance.now();fs.forEach(f=>{try{f(now)}catch(e){console.error(e)}});if(typeof step==='function')step()}}
+catch(e){setInterval(()=>{if(!document.hidden)return;const fs=[...bgTick];bgTick.clear();fs.forEach(f=>f(performance.now()));step()},40)}
+
 /* "media" = o player atual, com a mesma cara do <video>: arquivo local (o próprio <video>) ou Spotify (spOn) */
 const SP_OK=!!(window.KSP&&location.protocol!=='file:');
 let spOn=false,spStarted='',spPend=0,spEnded='',spFading=null;const mH={};
@@ -753,7 +762,7 @@ function renderLobby(){
   $('#lastBox').innerHTML=last?`<span style="font-size:30px">⭐</span><div><small>Última apresentação</small><div><b>${esc(last.name)}</b>${chip(last.unit)} · nota <b style="color:var(--acc)">${last.final??'—'}</b></div><small>${esc(last.song_title||'')}</small></div>`:`<span style="font-size:30px">🎶</span><div><b>Bem-vindos!</b><div><small>Escolha sua música, chame a galera da sua unidade e solte a voz.</small></div></div>`;
   const rawNext=$('#nextList').innerHTML,rawTop=$('#topList').innerHTML;
   fitLists();
-  requestAnimationFrame(()=>telaLobby(rawNext,rawTop));
+  raf(()=>telaLobby(rawNext,rawTop));
   // sem LINK_CELULAR, mas aberto pelo site publicado: usa o celular.html da mesma pasta
   const LINK=C.LINK_CELULAR||(/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?new URL('./',location.href).href:'');
   if(LINK&&qrDone!==LINK&&window.QRCode){$('#qr').innerHTML='';$('#qr').style.display='';new QRCode($('#qr'),{text:LINK,width:236,height:236,colorDark:'#0b0908',colorLight:'#ffffff'});$('#qrUrl').textContent=LINK.replace(/^https?:\/\//,'').replace(/\/$/,'');qrDone=LINK}
@@ -767,7 +776,7 @@ $('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos
 
 /* ===================== música e letra ===================== */
 let lyr={synced:false,lines:[]},offset=0,syncing=false,syncIdx=0,syncBackup=null,lastIdx=-2,curEl=null,cdEl=null,seeking=false;
-function setView(v){document.body.dataset.view=v;if(v==='lobby'){media.classList.remove('show');requestAnimationFrame(renderLobby);$('#title').textContent='Telão'}}
+function setView(v){document.body.dataset.view=v;if(v==='lobby'){media.classList.remove('show');raf(renderLobby);$('#title').textContent='Telão'}}
 async function loadSongFor(song){
   if(spOn&&spStarted)KSP.pause();
   if(mediaEl.src){mediaEl.pause();URL.revokeObjectURL(mediaEl.src)}
@@ -1038,7 +1047,7 @@ const SO_ANIMA=k=>!(C.PESOS[k]>0);
 /* ===================== show: chamar, cantar, notas ===================== */
 let busy=false,phaseOpen=false,skipFlag=false,current=null,votes=[];
 function wait(ms,onTick){skipFlag=false;return new Promise(res=>{const t0=performance.now();
-  (function f(now){if(skipFlag){skipFlag=false;res();return}const el=now-t0;onTick&&onTick(Math.min(1,el/ms),el);if(el>=ms)res();else requestAnimationFrame(f)})(performance.now())})}
+  (function f(now){if(skipFlag){skipFlag=false;res();return}const el=now-t0;onTick&&onTick(Math.min(1,el/ms),el);if(el>=ms)res();else raf(f)})(performance.now())})}
 function showPhase(html){$('#phaseCard').innerHTML=html;$('#phase').classList.add('show');phaseOpen=true}
 function hidePhase(){$('#phase').classList.remove('show');phaseOpen=false;$('#confetti').innerHTML=''}
 const people=e=>{const A={name:e.name,unit:e.unit};const B=e.mode!=='solo'&&e.partner?{name:e.partner,unit:e.partner_unit||e.unit}:null;return B?[A,B]:[A]};
@@ -1612,8 +1621,7 @@ function spCelStart(){
 function spLyricsPrefetch(song){if(localStorage.getItem('kl:'+song.id)==null)spLyrics(song)}
 
 /* loop */
-// com a janela de controle minimizada o Chrome pausa o requestAnimationFrame: um timer mantém a letra da TV andando
-setInterval(()=>{if(document.hidden)step()},40);
+// com a janela de controle escondida, quem chama step() é o relógio de fundo (worker, lá em cima)
 function frame(){requestAnimationFrame(frame);step()}
 function step(){
   spTick();scoreTick();telaTick();
