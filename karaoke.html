@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611121800"></script>
-<script src="spotify.js?v=202611121800"></script>
+<script src="karaoke-store.js?v=202611122100"></script>
+<script src="spotify.js?v=202611122100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -1484,7 +1484,7 @@ async function spLyrics(song){
     renderCatalog();store.upsert('catalog',[{id:song.id,title:song.title,artist:song.artist||'',has_lyrics:true}]).catch(()=>{});
   }catch(e){}
 }
-const spEntry=t=>{const c=KSP.clean(t);return{id:'sp-'+t.id,title:c.title,artist:c.artist,sp:{uri:t.uri,id:t.id,dur:(t.duration_ms||0)/1000,name:t.name,spArtist:c.spArtist}}};
+const spEntry=t=>{const c=KSP.clean(t);return{id:'sp-'+t.id,title:c.title,artist:c.artist,sp:{uri:t.uri,id:t.id,dur:(t.duration_ms||0)/1000,name:t.name,spArtist:c.spArtist,vocal:!!c.vocal}}};
 let spExtra=[];try{spExtra=JSON.parse(localStorage.getItem('ksp_extra')||'[]')}catch(e){}
 let spInfo='';
 async function loadSpotifyCatalog(){
@@ -1513,7 +1513,7 @@ if(SP_OK){
     KSP.logout();songs=Object.fromEntries(Object.entries(songs).filter(([,s])=>!s.sp));renderCatalog();publishCatalog();spUI()};
   const spSearch=async()=>{const q=$('#spQ').value.trim(),out=$('#spRes');if(!q)return;out.innerHTML='<div class="it"><small>Buscando…</small></div>';
     try{const r=await KSP.search(q);
-      out.innerHTML=r.length?r.map(t=>{const e=spEntry(t);return `<div class="it"><span class="t" title="${esc(t.name)} · ${esc(e.sp.spArtist)}">🟢 ${esc(songLabel(e))}<small style="display:block;color:var(--dim)">${esc(e.sp.spArtist)} · ${fmt(e.sp.dur)}</small></span><button data-spp="${esc(t.id)}" title="Tocar para testar">▶</button><button data-spa="${esc(t.id)}">+ catálogo</button></div>`}).join('')
+      out.innerHTML=r.length?r.map(t=>{const e=spEntry(t);return `<div class="it"><span class="t" title="${esc(t.name)} · ${esc(e.sp.spArtist)}">🟢 ${esc(songLabel(e))}<small style="display:block;color:var(--dim)">${esc(e.sp.spArtist)} · ${fmt(e.sp.dur)}${e.sp.vocal?' · <b style="color:#ffd23d">🎤 tem voz do cantor</b>':''}</small></span><button data-spp="${esc(t.id)}" title="Tocar para testar">▶</button><button data-spa="${esc(t.id)}">+ catálogo</button></div>`}).join('')
         :'<div class="it"><small>Nenhuma versão karaokê/instrumental. Tente outro nome.</small></div>';
       out._res=Object.fromEntries(r.map(t=>[t.id,t]));
     }catch(e){out.innerHTML='<div class="it"><small>Erro: '+esc(e.message)+'</small></div>'}};

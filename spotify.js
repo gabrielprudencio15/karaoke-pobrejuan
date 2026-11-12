@@ -75,13 +75,19 @@
     // tira "(Karaoke Version)", "- Originally Performed by X" etc. e acha o artista original
     clean(t) {
       const name = t.name || '', album = t.album?.name || '', spArtist = (t.artists || []).map(a => a.name).join(', ');
-      const re = /(?:originally performed by|in the style of|as made famous by|made famous by|as made popular by|made popular by|as popularized by|popularized by|no estilo de|popularizad[ao] por)\s+([^()\[\]\-–|]+?)(?=\s*(?:[()\[\]\-–|]|karaok|instrumental|version|vers[aã]o|$))/i;
+      // artista original escrito no nome/álbum ("Originally Performed By X", "In the Style of X", "No Estilo de X", "Style X"...)
+      const re = /(?:originally performed by|in the style of|style of|as made famous by|made famous by|as made popular by|made popular by|as popularized by|popularized by|no estilo de|ao estilo de|estilo de|popularizad[ao] por|\(style)\s+([^()\[\]\-–|]+?)(?=\s*(?:[()\[\]\-–|]|karaok|instrumental|version|vers[aã]o|$))/i;
       const m = name.match(re) || album.match(re);
-      let title = name.replace(/\s*[(\[][^)\]]*(karaok|instrumental|originally|style of|made famous|made popular|popularized|version|vers[aã]o|playback|backing)[^)\]]*[)\]]/ig, '')
-        .replace(/\s+[-–]\s+.*(karaok|instrumental|originally|style of|made famous|made popular|popularized|version|vers[aã]o|playback|backing).*$/i, '').trim();
-      const labelArtist = /karaok|sing2|ameritz|backing|instrumental|playback|zzang|sunfly|hits|hitmaker/i.test(spArtist);
+      const KW = 'karaok|instrumental|originally|style|estilo|made famous|made popular|popularized|version|vers[aã]o|playback|backing|demonstration|lead vocal';
+      let title = name.replace(new RegExp('\\s*[(\\[][^)\\]]*(' + KW + ')[^)\\]]*[)\\]]', 'ig'), '')
+        .replace(new RegExp('\\s+[-–]\\s+.*(' + KW + ').*$', 'i'), '')
+        .replace(/^\s*karaok[eê]\s*[-–:]\s*/i, '')            // "Karaoke - Evidencias"
+        .replace(/\s*[-–]\s*$/, '').trim();                    // traço sobrando no fim
+      const labelArtist = /karaok|sing2|ameritz|backing|instrumental|playback|zzang|sunfly|hits|hitmaker|hit crew|stingray|party tyme|xexe band/i.test(spArtist);
       const artist = m ? m[1].trim() : (labelArtist ? '' : spArtist);
-      return { title: title || name, artist, spArtist };
+      // versão de demonstração/guia: tem a voz do cantor gravada
+      const vocal = /demonstration|lead vocal|guide vocal|with vocals|com voz/i.test(name);
+      return { title: title || name, artist, spArtist, vocal };
     },
     async search(q) {
       const out = new Map();
