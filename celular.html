@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611122100"></script>
+<script src="karaoke-store.js?v=202611122300"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -79,6 +79,9 @@ nav button.on{color:var(--acc);font-weight:800}
 .big{font-family:"Bebas Neue",Impact,sans-serif;font-size:56px;color:var(--acc2);text-align:center;line-height:1}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--acc);padding:12px 18px;border-radius:12px;z-index:99;font-size:15px;max-width:90vw}
 .mode{color:var(--dim);font-size:13px}
+.spcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0;display:flex;gap:12px;align-items:center}
+.spcard .t{flex:1;font-size:14px;color:var(--dim)}.spcard b{display:block;font-size:15px;color:var(--txt)}
+.sptag{font-size:11px;font-weight:800;color:#1ed760;margin-left:6px}
 
 /* janelas de aviso/confirmação (no lugar do alert/confirm do Windows) */
 .kdlg{position:fixed;inset:0;z-index:200;background:rgba(6,4,3,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:kfade .15s ease}
@@ -113,6 +116,7 @@ nav button.on{color:var(--acc);font-weight:800}
     <h3>Escolha sua música</h3>
     <input id="search" type="text" placeholder="Buscar música ou artista">
     <div id="songs"></div>
+    <div id="spBox" class="hidden"></div>
   </div>
   <div id="tab-fila" class="wrap hidden">
     <div id="nowStage"></div>
@@ -150,6 +154,13 @@ nav button.on{color:var(--acc);font-weight:800}
   </div>
 </div></div>
 
+<div id="spSheet" class="ov"><div class="sheet" style="max-height:88vh;display:flex;flex-direction:column">
+  <div class="disp" style="font-size:28px;color:var(--acc)">🟢 Buscar no Spotify</div>
+  <small>Só aparecem versões karaokê (sem a voz do cantor).</small>
+  <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin:10px 0"><input id="spQ" type="text" maxlength="60" placeholder="Nome da música ou artista" enterkeyhint="search"><button class="pri" id="spGo">Buscar</button></div>
+  <div id="spList" style="overflow:auto;flex:1;min-height:60px"></div>
+  <button class="full" id="spBack" style="margin-top:10px">Voltar</button>
+</div></div>
 <div id="vote" class="ov"><div class="sheet" style="text-align:center">
   <div class="disp" style="font-size:30px;color:var(--acc)">📱 VOTE AGORA</div>
   <div style="font-size:20px;font-weight:800;margin-top:6px" id="vWho"></div>
@@ -238,8 +249,9 @@ function render(){renderSongs();renderFila();renderPlacar();renderNotice();rende
 function renderSongs(){
   const q=slug($('#search').value);
   const list=[...CAT].sort((a,b)=>((a.artist||'')+a.title).localeCompare((b.artist||'')+b.title,'pt')).filter(s=>!q||slug((s.artist||'')+' '+s.title).includes(q));
-  $('#songs').innerHTML=list.length?list.slice(0,300).map(s=>`<div class="song"><div class="t"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}${s.has_lyrics?' · 📝 com letra':''}</small></div><button data-id="${esc(s.id)}">Cantar</button></div>`).join('')
+  $('#songs').innerHTML=list.length?list.slice(0,300).map(s=>`<div class="song"><div class="t"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}${s.has_lyrics?' · 📝 com letra':''}${String(s.id).startsWith('sp-')?'<span class="sptag">● Spotify</span>':''}</small></div><button data-id="${esc(s.id)}">Cantar</button></div>`).join('')
     :`<p class="dim">${CAT.length?'Nada encontrado.':'O catálogo ainda não foi carregado no telão.'}</p>`;
+  renderSpBox();
 }
 $('#search').oninput=renderSongs;
 $('#songs').onclick=e=>{const id=e.target.dataset.id;if(id)openSheet(CAT.find(s=>s.id===id))};
@@ -288,6 +300,46 @@ $('#shGo').onclick=async()=>{
     $('#sheet').classList.remove('show');toast('Você entrou na fila! 🎉');await refresh('queue');goTab('fila');
   }catch(e){toast('Não deu: '+e.message)}
   $('#shGo').disabled=false;
+};
+
+/* ---------- busca no Spotify (quem busca é o telão, com a conta dele) ---------- */
+const spWait=new Map();let spSeen=0;
+const spBus=store.bus?store.bus('spotify',(ev,p)=>{
+  if(ev==='sp-on'){const was=spAlive();spSeen=Date.now();if(!was&&me)renderSpBox();return}
+  const w=p&&spWait.get(p.rid);if(w){spWait.delete(p.rid);w(p)}
+}):null;
+function spAlive(){return !!spBus&&Date.now()-spSeen<50000}
+function spAsk(ev,payload,ms=15000){return new Promise(res=>{const rid=Math.random().toString(36).slice(2,12);spWait.set(rid,res);spBus.send(ev,{...payload,rid,dev});
+  setTimeout(()=>{if(spWait.has(rid)){spWait.delete(rid);res({error:'O telão não respondeu. Tente de novo daqui a pouco.'})}},ms)})}
+if(spBus){spBus.send('sp-ping',{});document.addEventListener('visibilitychange',()=>{if(!document.hidden)spBus.send('sp-ping',{})})}
+setInterval(()=>{if(!spAlive()&&!$('#spBox').classList.contains('hidden'))renderSpBox()},10000);
+function renderSpBox(){
+  const on=spAlive();$('#spBox').classList.toggle('hidden',!on);if(!on)return;
+  const q=$('#search').value.trim();
+  $('#spBox').innerHTML='<div class="spcard"><div class="t"><b>Não achou sua música?</b>Busque uma versão karaokê no Spotify'+(q?' por <i>'+esc(q)+'</i>':'')+'.</div><button class="pri" id="spOpen">🟢 Buscar</button></div>';
+  $('#spOpen').onclick=()=>{$('#spQ').value=$('#search').value.trim();$('#spList').innerHTML='';$('#spSheet').classList.add('show');if($('#spQ').value)spSearch();else $('#spQ').focus()};
+}
+let spItems=[];
+const mmss=d=>Math.floor(d/60)+':'+String(d%60).padStart(2,'0');
+async function spSearch(){
+  const q=$('#spQ').value.trim();if(!q){toast('Digite o nome da música');return}
+  $('#spQ').blur();$('#spGo').disabled=true;$('#spList').innerHTML='<p class="dim">Buscando no Spotify… 🎧</p>';
+  const r=await spAsk('sp-search',{q});$('#spGo').disabled=false;
+  if(r.error){$('#spList').innerHTML='<p class="dim">'+esc(r.error)+'</p>';return}
+  spItems=r.items||[];
+  $('#spList').innerHTML=spItems.length?spItems.map((it,i)=>'<div class="song"><div class="t"><b>'+esc(it.title)+'</b><small>'+esc(it.artist||it.label)+' · '+mmss(it.dur)+(it.inCat?' · já está na lista':'')+'</small></div><button data-i="'+i+'">Escolher</button></div>').join('')
+    :'<p class="dim">Nenhuma versão karaokê encontrada. Tente só o nome da música, ou música + artista.</p>';
+}
+$('#spGo').onclick=spSearch;
+$('#spQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();spSearch()}});
+$('#spBack').onclick=()=>$('#spSheet').classList.remove('show');
+$('#spSheet').onclick=e=>{if(e.target.id==='spSheet')$('#spSheet').classList.remove('show')};
+$('#spList').onclick=async e=>{
+  const b=e.target.closest('button[data-i]');if(!b)return;const it=spItems[+b.dataset.i];if(!it)return;
+  b.disabled=true;b.textContent='…';
+  const r=await spAsk('sp-pick',{tid:it.tid});
+  if(r.error){toast(r.error);b.disabled=false;b.textContent='Escolher';return}
+  $('#spSheet').classList.remove('show');refresh('catalog');openSheet({id:r.id,title:r.title,artist:r.artist});
 };
 
 /* ---------- avisos ---------- */

@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611122100"></script>
-<script src="spotify.js?v=202611122100"></script>
+<script src="karaoke-store.js?v=202611122300"></script>
+<script src="spotify.js?v=202611122300"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -1540,7 +1540,7 @@ if(SP_OK){
   addEventListener('click',()=>KSP.activate(),true); // o Chrome só libera o som do player depois de um clique
   (async()=>{
     try{if(await KSP.handleRedirect())toast('Spotify conectado ✅')}catch(e){kAlert(e.message,'Spotify','🟢')}
-    spUI();if(KSP.isLogged()){await loadSpotifyCatalog();spReady()}
+    spUI();if(KSP.isLogged()){await loadSpotifyCatalog();spReady();spCelStart()}
   })();
 }
 // teste da conexão: login, busca, playlist, letra e player (o clique libera o som)
@@ -1569,6 +1569,45 @@ async function spDiag(){
     pop();R(p2-p1>2.5,'Player tocou e andou '+(p2-p1).toFixed(1)+' s em 4 s','A letra acompanha essa posição')}
   catch(e){pop();R(false,'Player',esc(e.message))}
   finally{spDiagOn=false;spPend=0;if(spOn&&curSong?.sp)Object.assign(KSP.st,{paused:true,pos:0,ts:performance.now(),dur:curSong.sp.dur,uri:curSong.sp.uri})}
+}
+/* ===================== busca do Spotify pelo celular ===================== */
+// o celular pede pelo canal de mensagens; o telão busca com a conta dele e devolve (celular não loga no Spotify)
+let spBus=null;const spCelCache=new Map(),spCelRate=new Map(),spCelAdds=new Map(),SP_CEL_MAX=5;
+const spCelOn=()=>SP_OK&&KSP.isLogged();
+function spCelStart(){
+  if(spBus||!store.bus)return;
+  spBus=store.bus('spotify',async(ev,p)=>{
+    if(!spCelOn()||!p)return;
+    if(ev==='sp-ping'){spBus.send('sp-on',{});return}
+    const dev=String(p.dev||'').slice(0,64),rid=String(p.rid||'').slice(0,32);if(!rid)return;
+    if(ev==='sp-search'){
+      const q=String(p.q||'').trim().slice(0,60);if(!q)return;
+      const now=Date.now();if(now-(spCelRate.get(dev)||0)<2500){spBus.send('sp-results',{rid,error:'Calma! Espere uns segundos entre as buscas.'});return}
+      spCelRate.set(dev,now);
+      try{
+        const r=(await KSP.search(q)).filter(t=>!KSP.clean(t).vocal).slice(0,15); // sem as versões com voz do cantor
+        r.forEach(t=>spCelCache.set(t.id,t));
+        spBus.send('sp-results',{rid,items:r.map(t=>{const e=spEntry(t);return{tid:t.id,title:e.title,artist:e.artist||'',label:e.sp.spArtist,dur:Math.round(e.sp.dur),inCat:!!songs[e.id]}})});
+      }catch(e){spBus.send('sp-results',{rid,error:'O Spotify não respondeu. Tente de novo.'})}
+      return;
+    }
+    if(ev==='sp-pick'){
+      const t=spCelCache.get(String(p.tid||''));
+      if(!t){spBus.send('sp-added',{rid,error:'Busque de novo, por favor.'});return}
+      const en=spEntry(t);
+      if(!songs[en.id]){
+        const n=spCelAdds.get(dev)||0;
+        if(n>=SP_CEL_MAX){spBus.send('sp-added',{rid,error:'Você já trouxe '+SP_CEL_MAX+' músicas novas. Escolha uma da lista 😉'});return}
+        try{await store.upsert('catalog',[{id:en.id,title:en.title,artist:en.artist||'',has_lyrics:false}])}
+        catch(e){spBus.send('sp-added',{rid,error:'O telão não conseguiu salvar a música. Avise o DJ.'});return}
+        spCelAdds.set(dev,n+1);songs[en.id]=en;
+        if(!spExtra.some(x=>x.id===en.id)){spExtra.push(en);try{localStorage.setItem('ksp_extra',JSON.stringify(spExtra))}catch(e){}}
+        renderCatalog();spLyricsPrefetch(en);toast('📱 Pedido pelo celular: 🟢 '+songLabel(en));
+      }
+      spBus.send('sp-added',{rid,id:en.id,title:en.title,artist:en.artist||''});
+    }
+  });
+  spBus.send('sp-on',{});setInterval(()=>{if(spCelOn())spBus.send('sp-on',{})},15000); // avisa os celulares que a busca está disponível
 }
 function spLyricsPrefetch(song){if(localStorage.getItem('kl:'+song.id)==null)spLyrics(song)}
 

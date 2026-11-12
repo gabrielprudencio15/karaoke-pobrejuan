@@ -103,6 +103,13 @@ window.KARAOKE_CONFIG = {
     async clear(t) { this._write(t, []); this._notify({ table: t, type: 'DELETE' }); }
     on(fn, tables = ALL) { const s = { fn, tables }; this.subs.push(s); return () => { this.subs = this.subs.filter(x => x !== s); }; }
     onStatus(fn) { fn(this.status); }
+    // no modo local, o "canal" liga as abas deste mesmo navegador (útil para testar)
+    bus(topic, onMsg) {
+      if (!('BroadcastChannel' in window)) return { send: () => {} };
+      const bc = new BroadcastChannel('kbus-' + topic);
+      bc.onmessage = e => { try { onMsg(e.data.event, e.data.payload || {}); } catch (err) { console.error(err); } };
+      return { send: (event, payload) => bc.postMessage({ event, payload }) };
+    }
   }
 
   /* ---------- modo online: Supabase (tabelas karaoke_*) ---------- */
@@ -183,6 +190,14 @@ window.KARAOKE_CONFIG = {
         }
       });
       return () => this.sb.removeChannel(ch);
+    }
+    // Mensagens rápidas entre celular e telão (sem gravar no banco): busca do Spotify pelo celular.
+    bus(topic, onMsg) {
+      const ch = this.sb.channel('kbus-' + topic, { config: { broadcast: { self: false } } });
+      let ready = false; const pending = [];
+      ch.on('broadcast', { event: '*' }, m => { try { onMsg(m.event, m.payload || {}); } catch (e) { console.error(e); } });
+      ch.subscribe(st => { if (st === 'SUBSCRIBED') { ready = true; pending.splice(0).forEach(m => ch.send(m)); } });
+      return { send: (event, payload) => { const m = { type: 'broadcast', event, payload }; ready ? ch.send(m) : pending.push(m); } };
     }
   }
 
