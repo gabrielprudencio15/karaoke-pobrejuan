@@ -17,7 +17,7 @@
   const saveTok = t => { tok = t; t ? ls.set(TK, JSON.stringify(t)) : ls.del(TK) };
 
   async function tokenRequest(body) {
-    const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: C.SPOTIFY_CLIENT_ID, ...body }) });
+    const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: KSP.clientId(), ...body }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error_description || d.error || ('HTTP ' + r.status));
     saveTok({ access: d.access_token, refresh: d.refresh_token || tok?.refresh, exp: Date.now() + (d.expires_in - 60) * 1000 });
@@ -25,16 +25,20 @@
   }
 
   const KSP = {
-    configured: !!C.SPOTIFY_CLIENT_ID,
+    // Client ID e playlist: o que foi digitado no telão (salvo neste notebook) ou, se vazio, o do karaoke-store.js
+    clientId: () => (ls.get('ksp_cid') || C.SPOTIFY_CLIENT_ID || '').trim(),
+    playlistCfg: () => (ls.get('ksp_pl') || C.SPOTIFY_PLAYLIST_ID || '').trim(),
+    setConfig(cid, pl) { const old = KSP.clientId(); cid ? ls.set('ksp_cid', cid.trim()) : ls.del('ksp_cid'); pl ? ls.set('ksp_pl', pl.trim()) : ls.del('ksp_pl'); if (KSP.clientId() !== old) saveTok(null) },
+    get configured() { return !!KSP.clientId() },
     redirectUri,
     scopes: SCOPES,
     isLogged: () => !!tok?.refresh,
     async login() {
-      if (!C.SPOTIFY_CLIENT_ID) throw new Error('Falta SPOTIFY_CLIENT_ID no karaoke-store.js');
+      if (!KSP.clientId()) throw new Error('Falta o Client ID do Spotify');
       const ver = rnd(64), state = rnd(16);
       ls.set(VER, ver); ls.set(ST, state);
       const ch = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ver)));
-      location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({ response_type: 'code', client_id: C.SPOTIFY_CLIENT_ID, scope: SCOPES, code_challenge_method: 'S256', code_challenge: ch, redirect_uri: redirectUri(), state });
+      location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({ response_type: 'code', client_id: KSP.clientId(), scope: SCOPES, code_challenge_method: 'S256', code_challenge: ch, redirect_uri: redirectUri(), state });
     },
     // chamar no carregamento da página: troca o ?code= pelo token. Devolve true se acabou de logar
     async handleRedirect() {

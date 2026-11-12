@@ -4,8 +4,8 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Teste do Spotify · Karaokê</title>
 <link rel="icon" href="favicon.svg">
-<script src="karaoke-store.js?v=202611091500"></script>
-<script src="spotify.js?v=202611091500"></script>
+<script src="karaoke-store.js?v=202611121600"></script>
+<script src="spotify.js?v=202611121600"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--ok:#4cc38a;--bad:#ff7a7a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:24px 16px}
@@ -58,8 +58,8 @@ $('#play').onclick=async()=>{
   rows.pop();R(null,'Player: conectando…');
   try{const id=await KSP.initPlayer('Teste karaokê',null,e=>{rows.pop();R(false,'Player',esc(e.message))});KSP.activate();
     rows.pop();R(true,'Player conectado',`device ${esc(id)}`);
-    await KSP.playUri(first.uri,30);await new Promise(r=>setTimeout(r,3000));await KSP.sync();const p1=KSP.st.pos;
-    await new Promise(r=>setTimeout(r,5000));await KSP.sync();const p2=KSP.st.pos;await KSP.pause();
+    await KSP.playUri(first.uri,Math.min(30,(first.duration_ms||60000)/1000*0.3));await new Promise(r=>setTimeout(r,3000));await KSP.sync();const p1=KSP.pos();
+    await new Promise(r=>setTimeout(r,5000));await KSP.sync();const p2=KSP.pos();await KSP.pause();
     R(p2-p1>3,`Tocou “${esc(first.name)}” e a posição andou ${(p2-p1).toFixed(1)} s em 5 s`,'A letra do karaokê segue essa posição.')}
   catch(e){rows.pop();R(false,'Player',esc(e.message))}
 };

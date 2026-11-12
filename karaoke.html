@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611091500"></script>
-<script src="spotify.js?v=202611091500"></script>
+<script src="karaoke-store.js?v=202611121600"></script>
+<script src="spotify.js?v=202611121600"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -159,6 +159,7 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 .calr em{font-style:normal;text-align:right;font-weight:700}.calr small{grid-column:1/-1;color:var(--dim);font-size:11px;margin-top:-4px}
 .calsc{text-align:right;font-size:14px;margin-top:6px}.calsc b{font-size:28px;color:var(--acc);margin-left:6px}
 .calw{color:var(--dim);margin:8px 0}
+.spd{display:flex;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}.spd small{display:block;color:var(--dim)}
 .clap{height:38px;background:var(--field);border-radius:19px;overflow:hidden;margin:18px 0;border:1px solid var(--line)}
 .clap div{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--acc) 60%,var(--acc2))}
 .cdown{font-family:"Bebas Neue",Impact,sans-serif;font-size:70px;color:var(--acc2)}
@@ -229,7 +230,17 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
     <small id="spStat"></small>
     <div id="spSearchRow"><div class="row"><input id="spQ" type="text" placeholder="Buscar versão karaokê no Spotify (Enter)"></div>
     <div class="list" id="spRes"></div></div>
-    <button id="spOut" class="full" style="margin-top:6px;font-size:12px">Desconectar Spotify</button>
+    <details id="spCfg" style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:var(--dim)">⚙️ Configurar / testar Spotify</summary>
+      <small>1. No developer.spotify.com crie um app (marque <b>Web API</b> e <b>Web Playback SDK</b>).<br>2. Em <b>Redirect URIs</b> cadastre este endereço:</small>
+      <div class="row"><code id="spRedir" style="font-size:11px;word-break:break-all;flex:1"></code><button id="spCopy" title="Copiar">📋</button></div>
+      <small>3. Em <b>User Management</b> adicione o e-mail da conta Premium.<br>4. Cole aqui o Client ID e o link de uma playlist <b>sua</b>:</small>
+      <div class="row"><input id="spCid" type="text" placeholder="Client ID (32 letras/números)" autocomplete="off"></div>
+      <div class="row"><input id="spPl" type="text" placeholder="Link da playlist (opcional)"></div>
+      <button id="spSave" class="full pri">Salvar</button>
+      <button id="spTest" class="full" style="margin-top:6px">🧪 Testar conexão (toca 6 s)</button>
+      <div id="spDiag"></div>
+      <button id="spOut" class="full" style="margin-top:6px;font-size:12px">Desconectar Spotify</button>
+    </details>
   </div>
 
   <h2>Adicionar à fila</h2>
@@ -373,7 +384,7 @@ const kAlert=(msg,title='',icon='⚠️')=>kDialog({msg,title,icon});
 const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
 const mediaEl=$('#media'),box=$('#lyrics');
 /* "media" = o player atual, com a mesma cara do <video>: arquivo local (o próprio <video>) ou Spotify (spOn) */
-const SP_OK=!!(window.KSP&&KSP.configured&&location.protocol!=='file:');
+const SP_OK=!!(window.KSP&&location.protocol!=='file:');
 let spOn=false,spStarted='',spPend=0,spEnded='',spFading=null;const mH={};
 const media={
   get src(){return spOn?(curSong?.sp?.uri||''):mediaEl.src},set src(v){mediaEl.src=v},
@@ -1417,7 +1428,7 @@ async function spPlay(){
 function spPause(){if(spStarted)KSP.pause();else KSP.st.paused=true;mH.pause&&mH.pause()}
 function spSeek(v){v=Math.max(0,v);if(spStarted&&spStarted===curSong?.sp?.uri)KSP.seek(v);else{spPend=v;Object.assign(KSP.st,{pos:v,ts:performance.now()})}}
 function spFinished(){if(spEnded===spStarted)return;spEnded=spStarted;KSP.st.pos=KSP.st.dur;KSP.st.paused=true;mH.pause&&mH.pause();mH.ended&&mH.ended()}
-let spLastPos=0,spSyncT=0;
+let spLastPos=0,spSyncT=0,spDiagOn=false;
 function spState(st){
   if(!spOn||!spStarted)return;
   const was=spLastPos;spLastPos=st.pos;
@@ -1451,18 +1462,19 @@ async function loadSpotifyCatalog(){
   spInfo='Carregando…';spUI();
   try{
     let n=0;
-    if(C.SPOTIFY_PLAYLIST_ID){const p=await KSP.playlist(C.SPOTIFY_PLAYLIST_ID);p.items.forEach(t=>{const e=spEntry(t);songs[e.id]=e});n=p.items.length;spInfo=`Playlist “${p.name}”: ${n} faixas`}
-    else spInfo='Sem playlist configurada (SPOTIFY_PLAYLIST_ID)';
+    if(KSP.playlistCfg()){const p=await KSP.playlist(KSP.playlistCfg());p.items.forEach(t=>{const e=spEntry(t);songs[e.id]=e});n=p.items.length;spInfo=`Playlist “${p.name}”: ${n} faixas`}
+    else spInfo='Sem playlist: cole o link em ⚙️ Configurar Spotify (ou use a busca)';
     spExtra.forEach(e=>songs[e.id]=e);if(spExtra.length)spInfo+=` + ${spExtra.length} da busca`;
     renderCatalog();await publishCatalog();
   }catch(e){spInfo='Erro: '+e.message+(e.status===403||e.status===404?' — a playlist precisa ser SUA (copie as faixas para uma playlist da sua conta).':'')}
   spUI();
 }
 function spUI(){
-  if(!SP_OK)return;$('#spSec').style.display='';const on=KSP.isLogged();
+  if(!SP_OK)return;$('#spSec').style.display='';const on=KSP.isLogged(),cfg=KSP.configured;
+  $('#spLogin').style.display=cfg?'':'none';if(!cfg)$('#spCfg').open=true;
   $('#spLogin').textContent=on?'🔄 Recarregar playlist do Spotify':'🟢 Conectar Spotify (Premium)';
   $('#spOut').style.display=$('#spSearchRow').style.display=on?'':'none';
-  $('#spStat').textContent=on?spInfo:'Toca versões karaokê do Spotify no lugar dos arquivos. Sem remover voz, sem gravar a música e sem nota de harmonia.';
+  $('#spStat').textContent=!cfg?'Primeiro configure abaixo (Client ID do app do Spotify).':on?spInfo:'Toca versões karaokê do Spotify no lugar dos arquivos. Sem remover voz, sem gravar a música e sem nota de harmonia.';
 }
 if(SP_OK){
   $('#spLogin').onclick=()=>KSP.isLogged()?loadSpotifyCatalog():KSP.login().catch(e=>kAlert(e.message,'Spotify','🟢'));
@@ -1480,11 +1492,47 @@ if(SP_OK){
     if(e.target.dataset.spa){songs[en.id]=en;if(!spExtra.some(x=>x.id===en.id)){spExtra.push(en);try{localStorage.setItem('ksp_extra',JSON.stringify(spExtra))}catch(err){}}
       renderCatalog();await publishCatalog();e.target.textContent='✓ no catálogo';e.target.disabled=true;spLyricsPrefetch(en)}
     else{songs[en.id]=songs[en.id]||en;previewSong(en.id)}};
+  // configuração direto no telão (fica salva neste notebook)
+  $('#spRedir').textContent=KSP.redirectUri();$('#spCid').value=KSP.clientId();$('#spPl').value=KSP.playlistCfg();
+  $('#spCopy').onclick=async()=>{try{await navigator.clipboard.writeText(KSP.redirectUri());toast('Endereço copiado ✅ Cole em Redirect URIs no painel do Spotify')}catch(e){toast('Selecione o endereço e copie com Ctrl+C')}};
+  $('#spSave').onclick=async()=>{const cid=$('#spCid').value.trim(),pl=$('#spPl').value.trim(),changed=cid!==KSP.clientId();
+    if(cid&&!/^[0-9a-f]{32}$/i.test(cid)&&!await kConfirm('O Client ID costuma ter 32 letras e números (ex.: 3f9a…). Salvar assim mesmo?',{ok:'Salvar',icon:'🟢'}))return;
+    KSP.setConfig(cid,pl);toast('Configuração do Spotify salva ✅');spUI();
+    if(changed&&cid){if(await kConfirm('Entrar agora com a conta Premium do Spotify?',{ok:'Entrar',icon:'🟢'}))KSP.login().catch(e=>kAlert(e.message,'Spotify','🟢'))}
+    else if(KSP.isLogged())loadSpotifyCatalog()};
+  $('#spTest').onclick=spDiag;
   addEventListener('click',()=>KSP.activate(),true); // o Chrome só libera o som do player depois de um clique
   (async()=>{
     try{if(await KSP.handleRedirect())toast('Spotify conectado ✅')}catch(e){kAlert(e.message,'Spotify','🟢')}
     spUI();if(KSP.isLogged()){await loadSpotifyCatalog();spReady()}
   })();
+}
+// teste da conexão: login, busca, playlist, letra e player (o clique libera o som)
+async function spDiag(){
+  const out=$('#spDiag'),L=[];const R=(ok,t,d='')=>{L.push('<div class="spd"><b>'+(ok===true?'✅':ok===false?'❌':'⏳')+'</b><span>'+t+(d?'<small>'+d+'</small>':'')+'</span></div>');out.innerHTML=L.join('')};
+  const pop=()=>L.pop();
+  if(!KSP.configured){R(false,'Falta o Client ID','Cole o Client ID e clique em Salvar');return}
+  if(!KSP.isLogged()){R(false,'Spotify não conectado','Clique em 🟢 Conectar Spotify');return}
+  let first=null;
+  try{const me=await KSP.me();R(true,'Login','Conta: '+esc(me.display_name||me.id))}catch(e){R(false,'Login',esc(e.message)+(e.status===403?'<br>Adicione o e-mail da conta em User Management no painel do app.':''));return}
+  try{const r=await KSP.search('sossego');first=r[0];R(r.length>0,'Busca: '+r.length+' versões karaokê',r.slice(0,3).map(t=>esc(songLabel(spEntry(t)))).join(' · '))}catch(e){R(false,'Busca',esc(e.message))}
+  if(KSP.playlistCfg()){try{const p=await KSP.playlist(KSP.playlistCfg());first=p.items[0]||first;R(p.items.length>0,'Playlist “'+esc(p.name)+'”: '+p.items.length+' faixas','Dona: '+esc(p.owner))}
+    catch(e){R(false,'Playlist',esc(e.message)+(e.status===403||e.status===404?'<br>A playlist precisa ser da SUA conta.':''))}}
+  else R(null,'Playlist','sem link configurado (opcional)');
+  if(!first)return;
+  try{const c=spEntry(first),d=await (await fetch('https://lrclib.net/api/search?'+new URLSearchParams(c.artist?{track_name:c.title,artist_name:c.artist}:{q:c.title}))).json();
+    R(d.some(x=>x.syncedLyrics),'Letra para “'+esc(songLabel(c))+'”',d.filter(x=>x.syncedLyrics).length+' sincronizadas no lrclib')}catch(e){R(false,'Letra (lrclib)',esc(e.message))}
+  if(busy){R(null,'Player','não testado: tem apresentação rolando');return}
+  R(null,'Player: conectando…');
+  try{if(!await spReady())throw new Error('não conectou');KSP.activate();
+    if(!media.paused)media.pause();
+    // o teste usa o player "por fora": spStarted vazio faz o telão ignorar os eventos dele
+    spStarted='';spDiagOn=true;
+    const fd=(first.duration_ms||0)/1000;await KSP.playUri(first.uri,Math.min(30,fd*0.3));KSP.st.dur=fd;await new Promise(r=>setTimeout(r,2500));await KSP.sync();const p1=KSP.pos();
+    await new Promise(r=>setTimeout(r,4000));await KSP.sync();const p2=KSP.pos();await KSP.pause();
+    pop();R(p2-p1>2.5,'Player tocou e andou '+(p2-p1).toFixed(1)+' s em 4 s','A letra acompanha essa posição')}
+  catch(e){pop();R(false,'Player',esc(e.message))}
+  finally{spDiagOn=false;spPend=0;if(spOn&&curSong?.sp)Object.assign(KSP.st,{paused:true,pos:0,ts:performance.now(),dur:curSong.sp.dur,uri:curSong.sp.uri})}
 }
 function spLyricsPrefetch(song){if(localStorage.getItem('kl:'+song.id)==null)spLyrics(song)}
 
