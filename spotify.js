@@ -96,7 +96,10 @@
         (d?.tracks?.items || []).forEach(t => { if (t && KSP.isKaraoke(t)) out.set(t.id, t) });
       };
       // Development Mode: máx. 10 por página, então pagina
-      await run(q + ' karaoke', 0); await run(q + ' karaoke', 10); await run(q + ' karaoke', 20); await run(q + ' instrumental', 0);
+      // as 4 páginas ao mesmo tempo (bem mais rápido); a ordem dos resultados segue a das páginas
+      const pages = await Promise.allSettled([[q + ' karaoke', 0], [q + ' karaoke', 10], [q + ' karaoke', 20], [q + ' instrumental', 0]].map(([qq, off]) => KSP.api('/search?' + new URLSearchParams({ q: qq, type: 'track', limit: 10, offset: off }))));
+      if (pages.every(p => p.status === 'rejected')) throw pages[0].reason;
+      pages.forEach(p => { if (p.status === 'fulfilled') (p.value?.tracks?.items || []).forEach(t => { if (t && KSP.isKaraoke(t) && !out.has(t.id)) out.set(t.id, t) }) });
       return [...out.values()];
     },
     playlistId: v => (String(v || '').match(/playlist[/:]([A-Za-z0-9]+)/) || [])[1] || String(v || '').trim(),
