@@ -1502,6 +1502,11 @@ async function loadSpotifyCatalog(){
     let n=0;
     if(KSP.playlistCfg()){const p=await KSP.playlist(KSP.playlistCfg());p.items.forEach(t=>{const e=spEntry(t);songs[e.id]=e});n=p.items.length;spInfo=`Playlist “${p.name}”: ${n} faixas`}
     else spInfo='Sem playlist: cole o link em ⚙️ Configurar Spotify (ou use a busca)';
+    // músicas guardadas antes de uma melhoria na limpeza dos nomes: limpa de novo pelo nome original do Spotify
+    spExtra=spExtra.map(e=>{if(!e.sp?.name)return e;const c=KSP.clean({name:e.sp.name,artists:[{name:e.sp.spArtist||''}],album:{name:''}});
+      const nt=c.title,na=c.artist||e.artist||'';if(nt!==e.title||na!==e.artist){try{localStorage.removeItem('kl:'+e.id)}catch(err){}}
+      return{...e,title:nt,artist:na,sp:{...e.sp,vocal:!!c.vocal}}});
+    try{localStorage.setItem('ksp_extra',JSON.stringify(spExtra))}catch(e){}
     spExtra.forEach(e=>songs[e.id]=e);if(spExtra.length)spInfo+=` + ${spExtra.length} da busca`;
     renderCatalog();await publishCatalog();
   }catch(e){spInfo='Erro: '+e.message+(e.status===403||e.status===404?' — a playlist precisa ser SUA (copie as faixas para uma playlist da sua conta).':'')}
