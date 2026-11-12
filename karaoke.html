@@ -159,6 +159,13 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 .calr em{font-style:normal;text-align:right;font-weight:700}.calr small{grid-column:1/-1;color:var(--dim);font-size:11px;margin-top:-4px}
 .calsc{text-align:right;font-size:14px;margin-top:6px}.calsc b{font-size:28px;color:var(--acc);margin-left:6px}
 .calw{color:var(--dim);margin:8px 0}
+#catModal:not(.show){display:none}
+#catModal .catbox{width:min(760px,100%);height:min(86vh,900px);text-align:left;display:flex;flex-direction:column;gap:8px;padding:18px}
+.catHead{display:flex;justify-content:space-between;align-items:center}.catHead .kt{margin:0}
+.catTools{display:flex;gap:8px;flex-wrap:wrap}.catTools>*{flex:1;text-align:center;white-space:nowrap}
+.catbox small{color:var(--dim)}
+#catSearch{width:100%;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:15px;outline:none}#catSearch:focus{border-color:var(--acc)}#catSearch::placeholder{color:var(--dim)}
+#catList{max-height:none;flex:1;min-height:0;margin-top:0}#catList .it{font-size:14px;padding:8px 10px}
 .spd{display:flex;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}.spd small{display:block;color:var(--dim)}
 .clap{height:38px;background:var(--field);border-radius:19px;overflow:hidden;margin:18px 0;border:1px solid var(--line)}
 .clap div{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--acc) 60%,var(--acc2))}
@@ -216,14 +223,9 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <small>Espaço: tocar/pausar · ←/→: 5s · Enter: pular etapa · T: modo TV · I: pular intro · + / −: letra mais cedo / mais tarde</small>
 
   <h2>Músicas</h2>
-  <button id="folderBtn" class="full pri">📂 Escolher pasta de músicas</button>
+  <button id="catOpen" class="full pri">📂 Carregar músicas</button>
   <button id="reopenBtn" class="full" style="display:none;margin-top:6px"></button>
-  <div class="row"><label class="btn full">➕ Adicionar arquivos soltos
-    <input id="files" type="file" multiple accept="audio/*,video/*,.mp3,.m4a,.wav,.ogg,.flac,.mp4,.webm,.mkv,.lrc,.txt" hidden></label></div>
   <input id="folderInput" type="file" webkitdirectory multiple hidden>
-  <small>Dica: nomeie como <b>Artista - Música.mp3</b>. Letra .lrc com o mesmo nome entra junto.</small>
-  <div class="row"><input id="catSearch" type="text" placeholder="Buscar no catálogo (0 músicas)"></div>
-  <div class="list" id="catList"></div>
   <div id="spSec" style="display:none">
     <h2>Spotify</h2>
     <button id="spLogin" class="full">🟢 Conectar Spotify (Premium)</button>
@@ -351,6 +353,14 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <div id="phase" class="ov"><div class="card" id="phaseCard"></div></div>
 <div id="roleta" class="ov"><div class="card"><div class="ph-k">🎲 ROLETA DO KARAOKÊ</div><div class="nm" id="rolName"></div><div id="rolUnit"></div><div class="cardBtns"><button id="rolAgain">Girar de novo</button><button id="rolClose" class="pri">Fechar</button></div></div></div>
 <div id="confetti"></div>
+<div id="catModal" class="kdlg"><div class="kbox catbox" role="dialog" aria-modal="true" aria-label="Músicas do notebook">
+  <div class="catHead"><span class="kt">🎵 Músicas do notebook</span><button id="catClose" title="Fechar (Esc)">✕</button></div>
+  <div class="catTools"><button id="folderBtn" class="pri">📂 Escolher pasta de músicas</button>
+    <label class="btn">➕ Adicionar arquivos soltos<input id="files" type="file" multiple accept="audio/*,video/*,.mp3,.m4a,.wav,.ogg,.flac,.mp4,.webm,.mkv,.lrc,.txt" hidden></label></div>
+  <small>Dica: nomeie como <b>Artista - Música.mp3</b>. Letra .lrc com o mesmo nome entra junto. 📝 = tem letra · 🟢 = Spotify</small>
+  <input id="catSearch" type="text" placeholder="Buscar no catálogo (0 músicas)">
+  <div class="list" id="catList"></div>
+</div></div>
 <div id="calPanel"><div class="calt">🎯 Calibração da nota <button id="calClose" title="Fechar">✕</button></div>
   <div class="calb"><button id="calLeak">📏 Medir vazamento (6 s, sem cantar)</button><button id="calReset">🔄 Zerar medição</button></div>
   <div id="calBody"></div>
@@ -594,6 +604,7 @@ async function publishCatalog(){
 function renderCatalog(){
   const q=slug($('#catSearch').value),all=Object.values(songs).sort((a,b)=>songLabel(a).localeCompare(songLabel(b),'pt'));
   $('#catSearch').placeholder=`Buscar no catálogo (${all.length} músicas)`;
+  $('#catOpen').textContent=all.length?`🎵 Músicas do notebook (${all.length})`:'📂 Carregar músicas';
   const list=all.filter(s=>!q||slug(songLabel(s)).includes(q)).slice(0,200);
   $('#catList').innerHTML=list.length?list.map(s=>`<div class="it"><span class="t" title="${esc(songLabel(s))}${s.sp?' (Spotify: '+esc(s.sp.name)+')':''}">${s.sp?'🟢':hasLyrics(s.id)?'📝':'🎵'} ${esc(songLabel(s))}</span><button data-pre="${esc(s.id)}" title="Tocar para testar">▶</button><button data-add="${esc(s.id)}">+ fila</button></div>`).join(''):'<div class="it"><small>Nenhuma música carregada.</small></div>';
   $('#songDL').innerHTML=all.map(s=>`<option value="${esc(songLabel(s))}">`).join('');
@@ -601,9 +612,15 @@ function renderCatalog(){
 $('#catSearch').oninput=renderCatalog;
 $('#catList').onclick=e=>{
   const pre=e.target.dataset.pre,add=e.target.dataset.add;
-  if(pre)previewSong(pre);
-  if(add){$('#addSong').value=songLabel(songs[add]);$('#addName').focus()}
+  if(pre){catShow(false);previewSong(pre)}
+  if(add){catShow(false);$('#addSong').value=songLabel(songs[add]);$('#addName').focus()}
 };
+// lista de músicas em janela por cima (abre só quando precisa)
+function catShow(on){$('#catModal').classList.toggle('show',on);if(on){renderCatalog();setTimeout(()=>$('#catSearch').focus(),30)}}
+$('#catOpen').onclick=()=>catShow(true);
+$('#catClose').onclick=()=>catShow(false);
+$('#catModal').onclick=e=>{if(e.target.id==='catModal')catShow(false)};
+$('#catModal').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')catShow(false)});
 $('#files').onchange=e=>{ingest([...e.target.files]);e.target.value=''};
 const keepSp=()=>Object.fromEntries(Object.entries(songs).filter(([,s])=>s.sp)); // trocar a pasta não apaga as faixas do Spotify
 $('#folderInput').onchange=e=>{songs=keepSp();ingest([...e.target.files]);e.target.value=''};
