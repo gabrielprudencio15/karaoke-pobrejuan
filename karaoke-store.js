@@ -23,7 +23,7 @@ window.KARAOKE_CONFIG = {
   // Spotify (opcional). Client ID do app criado em developer.spotify.com (não é segredo).
   // Playlist: tem que ser SUA (ou colaborativa) — o Spotify só libera as faixas de playlist própria.
   // Aceita o ID ou o link inteiro da playlist.
-  SPOTIFY_CLIENT_ID: '',
+  SPOTIFY_CLIENT_ID: 'ca9adb5c719f4cfdbca3df67f9b25e21',
   SPOTIFY_PLAYLIST_ID: '',
 
   // Só a máquina conta ponto. Aplausos e votos aparecem na tela só para animar (peso 0).
