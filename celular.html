@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611130200"></script>
+<script src="karaoke-store.js?v=202611130300"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -38,6 +38,8 @@ small,.dim{color:var(--dim);font-size:13px}
 .units button{padding:16px 6px;font-weight:800}
 .units button.sel{color:var(--ink)}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
+#pauseBar{display:none;margin:6px 16px 0;padding:14px 16px;border-radius:14px;background:var(--panel2);border:1px solid var(--acc2);font-weight:800;font-size:17px}
+#pauseBar.on{display:block}
 #notice{margin:6px 16px 0;border-radius:14px;padding:0;font-weight:800;font-size:17px;transition:all .3s}
 #notice.on{padding:14px 16px;background:var(--panel2);border:1px solid var(--acc)}
 #notice.hot{background:var(--acc);color:var(--ink);animation:pulse 1s infinite alternate}
@@ -100,6 +102,7 @@ nav button.on{color:var(--acc);font-weight:800}
 </head>
 <body>
 <header><div id="brand"></div><div class="ev" id="ev"></div></header>
+<div id="pauseBar">⏸️ Intervalo: já voltamos! Sua vez na fila continua guardada.</div>
 <div id="notice"></div>
 
 <section id="reg" class="wrap hidden">
@@ -142,7 +145,7 @@ nav button.on{color:var(--acc);font-weight:800}
   <small>Você vai cantar</small>
   <div style="font-size:20px;font-weight:800;margin:4px 0 2px" id="shTitle"></div>
   <div class="seg" id="shMode">
-    <button data-m="solo" class="sel">🎤 Solo</button><button data-m="dueto">👯 Dueto</button><button data-m="batalha">⚔️ Batalha</button>
+    <button data-m="solo" class="sel">🎤 Solo</button><button data-m="dueto">👯 Dueto</button>
   </div>
   <div id="shPartner" class="hidden">
     <input id="shPName" type="text" maxlength="24" placeholder="Nome do parceiro(a)">
@@ -176,7 +179,7 @@ const slug=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(
 const C=window.KARAOKE_CONFIG,store=window.KStore,dev=store.deviceId();
 const UNITS=C.UNIDADES,unitOf=id=>UNITS.find(u=>u.id===id)||{id,nome:id||'?',cor:'#888'};
 const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:${u.cor}">${esc(u.nome)}</span>`};
-const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'⚔️ Batalha'};
+const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'👯 Dueto'};
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
 
 /* janelas bonitas no lugar do alert/confirm do Windows */
@@ -216,14 +219,14 @@ $('#rGo').onclick=()=>{
 $('#changeMe').onclick=e=>{e.preventDefault();showReg()};
 
 /* ---------- dados ---------- */
-let CAT=[],Q=[],P=[],STAGE=null;
+let CAT=[],Q=[],P=[],STAGE=null,PAUSED=false;
 const waiting=()=>Q.filter(x=>x.status==='waiting').sort((a,b)=>a.pos-b.pos);
 async function refresh(t){
   try{
     if(!t||t==='catalog')CAT=await store.list('catalog');
     if(!t||t==='queue')Q=await store.list('queue');
     if(!t||t==='performances')P=await store.list('performances');
-    if(!t||t==='stage'){const s=await store.list('stage');STAGE=s.find(x=>x.id==='main')||null}
+    if(!t||t==='stage'){const s=await store.list('stage');STAGE=s.find(x=>x.id==='main')||null;const pz=s.find(x=>x.id==='pause');PAUSED=!!pz&&pz.status==='on'}
   }catch(e){console.error(e)}
   if(me)render();
 }
@@ -244,7 +247,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
 });
 const goTab=t=>document.querySelector(`nav button[data-tab="${t}"]`).click();
 
-function render(){renderSongs();renderFila();renderPlacar();renderNotice();renderVote()}
+function render(){$('#pauseBar').classList.toggle('on',PAUSED);renderSongs();renderFila();renderPlacar();renderNotice();renderVote()}
 
 function renderSongs(){
   const q=slug($('#search').value);
@@ -284,7 +287,7 @@ function openSheet(s){
 }
 function setMode(m){shMode=m;document.querySelectorAll('#shMode button').forEach(b=>b.classList.toggle('sel',b.dataset.m===m));
   $('#shPartner').classList.toggle('hidden',m==='solo');
-  $('#shHint').textContent=m==='solo'?'Você canta sozinho(a).':m==='dueto'?'Vocês cantam juntos e a nota vale para os dois.':'Um contra o outro: quem cantar melhor leva!'}
+  $('#shHint').textContent=m==='solo'?'Você canta sozinho(a).':'Vocês cantam juntos e a nota vale para os dois.'}
 $('#shMode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m)};
 $('#shCancel').onclick=()=>$('#sheet').classList.remove('show');
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('show')};
@@ -384,23 +387,23 @@ function renderVote(){
   if(!e||localStorage.getItem('k_voted:'+e.id)||e.device_id===dev){ov.classList.remove('show');clearInterval(voteTimer);voteTimer=null;return}
   if(ov.classList.contains('show')&&ov.dataset.q===e.id)return;
   ov.dataset.q=e.id;myStars=0;
-  const battle=e.mode==='batalha'&&e.partner;
-  $('#vWho').innerHTML=esc(e.name)+chip(e.unit)+(e.partner?(battle?' vs ':' & ')+esc(e.partner)+chip(e.partner_unit||e.unit):'');
+  $('#vWho').innerHTML=esc(e.name)+chip(e.unit)+(e.partner?' & '+esc(e.partner)+chip(e.partner_unit||e.unit):'');
   $('#vSong').textContent=e.song_title||'';
-  $('#vBody').innerHTML=battle
-    ?`<p>Quem mandou melhor?</p><div class="vsBtns"><button class="pri" data-pick="a">${esc(e.name)}</button><button class="pri" data-pick="b" style="background:var(--acc2);border-color:var(--acc2)">${esc(e.partner)}</button></div>`
-    :`<div class="voteStars">${[1,2,3,4,5].map(n=>`<button data-s="${n}">★</button>`).join('')}</div><button class="pri full" id="vSend" disabled>Enviar voto</button>`;
+  $('#vBody').innerHTML=`<p style="margin:0 0 6px">Toque nas estrelas para votar</p><div class="voteStars">${[1,2,3,4,5].map(n=>`<button data-s="${n}">★</button>`).join('')}</div>`;
   ov.classList.add('show');
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(err){}
   clearInterval(voteTimer);
   const tick=()=>{const r=Math.ceil((voteDeadline()-Date.now())/1000);$('#vCd').textContent=r>0?r+'s':'';if(r<=0){ov.classList.remove('show');clearInterval(voteTimer);voteTimer=null}};
   tick();voteTimer=setInterval(tick,500);
 }
 $('#vBody').onclick=async e=>{
   const qid=$('#vote').dataset.q,b=e.target.closest('button');if(!b)return;
-  if(b.dataset.s){myStars=+b.dataset.s;document.querySelectorAll('.voteStars button').forEach(x=>x.classList.toggle('lit',+x.dataset.s<=myStars));$('#vSend').disabled=false;return}
-  const row=b.dataset.pick?{queue_id:qid,device_id:dev,pick:b.dataset.pick}:(b.id==='vSend'&&myStars?{queue_id:qid,device_id:dev,stars:myStars}:null);
-  if(!row)return;
-  b.disabled=true;
+  if(!b.dataset.s||$('#vote').dataset.sent===qid)return;
+  // um toque só já vota (a votação é curta)
+  myStars=+b.dataset.s;$('#vote').dataset.sent=qid;
+  document.querySelectorAll('.voteStars button').forEach(x=>{x.classList.toggle('lit',+x.dataset.s<=myStars);x.disabled=true});
+  const row={queue_id:qid,device_id:dev,stars:myStars};
+  await new Promise(r=>setTimeout(r,250));
   try{await store.insert('votes',row);toast('Voto enviado! ✅')}catch(err){toast(err.message==='Você já votou'?'Você já votou 😉':'Não deu: '+err.message)}
   localStorage.setItem('k_voted:'+qid,'1');$('#vote').classList.remove('show');clearInterval(voteTimer);voteTimer=null;
 };

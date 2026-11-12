@@ -30,7 +30,7 @@ window.KARAOKE_CONFIG = {
   // Se o microfone falhar, a pessoa fica com a nota do público (ou dos aplausos).
   // Para voltar a misturar: { maquina: 0.60, publico: 0.25, aplausos: 0.15 }
   PESOS: { maquina: 1, publico: 0, aplausos: 0 },
-  SEGUNDOS_VOTACAO: 6,          // 0 desliga a votação do público
+  SEGUNDOS_VOTACAO: 10,         // 0 desliga a votação do público
   SEGUNDOS_APLAUSO: 4,          // 0 desliga o medidor de aplausos
   SEGUNDOS_NOTA_FINAL: 6,       // tempo da tela da nota final antes de voltar ao telão
   APLAUSO_DB_MIN: -50,          // silêncio do salão (ajuste no ensaio)
@@ -47,8 +47,6 @@ window.KARAOKE_CONFIG = {
     { min: 0,  frases: ['Volta pra grelha e tenta de novo 😂', 'O importante é a resenha!', 'Coragem nota 1000! 🎤'] }
   ],
   FRASE_RECORDE: '🏆 NOVO RECORDE! O fogo é seu!',
-  FRASE_BATALHA: '{nome} levou a picanha! 🔥',   // {nome} = quem venceu
-  FRASE_EMPATE: 'EMPATE! Divide a picanha 🤝'
 };
 
 (function () {

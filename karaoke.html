@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611130200"></script>
-<script src="spotify.js?v=202611130200"></script>
+<script src="karaoke-store.js?v=202611130300"></script>
+<script src="spotify.js?v=202611130300"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -177,6 +177,11 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 .cardBtns{display:flex;gap:10px;justify-content:center;margin-top:18px}
 #intro{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 40%,var(--glow),#070504 70%);text-align:center;padding:20px}
 #intro.show{display:flex}
+#pauseOv{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:radial-gradient(circle at 50% 40%,var(--glow),#070504 70%);text-align:center;padding:20px}
+#pauseOv.show{display:flex}
+#pauseOv .pk{font-family:'Bebas Neue',sans-serif;letter-spacing:.2em;color:var(--acc);font-size:clamp(22px,3vw,40px)}
+#pauseOv .pn{font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,11vw,170px);line-height:.95}
+#pauseOv .ps{opacity:.8;font-size:clamp(16px,2vw,28px)}
 #intro .k{font-family:"Bebas Neue",Impact,sans-serif;font-size:36px;color:var(--acc);letter-spacing:10px}
 #intro .nm{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(60px,10vw,150px);line-height:.95;animation:pop .6s ease}
 #intro .sg{font-size:28px;color:var(--dim);margin-top:14px}
@@ -240,12 +245,13 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <div class="row"><input id="addName" type="text" placeholder="Nome"><select id="addUnit"></select></div>
   <div class="row"><input id="addSong" type="text" list="songDL" placeholder="Música (comece a digitar)"></div>
   <datalist id="songDL"></datalist>
-  <div class="row"><select id="addMode"><option value="solo">🎤 Solo</option><option value="dueto">👯 Dueto</option><option value="batalha">⚔️ Batalha</option></select></div>
+  <div class="row"><select id="addMode"><option value="solo">🎤 Solo</option><option value="dueto">👯 Dueto</option></select></div>
   <div class="row" id="partnerRow" style="display:none"><input id="addPartner" type="text" placeholder="Parceiro(a)"><select id="addPUnit"></select></div>
   <button id="addBtn" class="full">Adicionar à fila</button>
 
   <h2>Fila <span id="qCount"></span></h2>
   <button id="nextBtn2" class="full pri">▶ Chamar próximo</button>
+  <button id="pauseBtn" class="full" style="margin-top:8px" title="Discurso, sorteio, jantar... segura a fila e mostra 'Já voltamos' (tecla P)">⏸️ Pausar festa (P)</button>
   <div class="list" id="qList"></div>
   <button id="roletaBtn" class="full" style="margin-top:8px">🎲 Roleta: sortear alguém</button>
 
@@ -344,6 +350,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <div id="phase" class="ov"><div class="card" id="phaseCard"></div></div>
 <div id="roleta" class="ov"><div class="card"><div class="ph-k">🎲 ROLETA DO KARAOKÊ</div><div class="nm" id="rolName"></div><div id="rolUnit"></div><div class="cardBtns"><button id="rolAgain">Girar de novo</button><button id="rolClose" class="pri">Fechar</button></div></div></div>
 <div id="confetti"></div>
+<div id="pauseOv"><div class="pk">⏸️ INTERVALO</div><div class="pn">JÁ VOLTAMOS!</div><div class="ps">A fila continua guardada 😉</div><div class="cardBtns"><button class="pri" id="pauseOff">▶ Voltar à festa (P)</button></div></div>
 <div id="catModal" class="kdlg"><div class="kbox catbox" role="dialog" aria-modal="true" aria-label="Músicas do notebook">
   <div class="catHead"><span class="kt">🎵 Músicas do notebook</span><button id="catClose" title="Fechar (Esc)">✕</button></div>
   <div class="catTools"><button id="folderBtn" class="pri">📂 Escolher pasta de músicas</button>
@@ -385,7 +392,7 @@ const C=window.KARAOKE_CONFIG,store=window.KStore;
 const UNITS=C.UNIDADES;
 const unitOf=id=>UNITS.find(u=>u.id===id)||{id:id||'?',nome:id||'?',cor:'#888'};
 const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:${u.cor}">${esc(u.nome)}</span>`};
-const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'⚔️ Batalha'};
+const MODE={solo:'🎤 Solo',dueto:'👯 Dueto',batalha:'👯 Dueto'}; // batalha saiu: pedidos antigos viram dueto
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3500)}
 
 /* janelas bonitas no lugar do alert/confirm do Windows */
@@ -503,7 +510,7 @@ function updDirectUI(){
   $('#micVLabel').textContent=dm?'Nível efeito':'Volume mic';
   $('#micHint').innerHTML=dm
     ?'<b>Voz direto na caixa:</b> o notebook só escuta para dar nota e manda pela caixa <b>só o eco/reverb</b> (deixe os dois em 0 para não sair nada). Sugestão: eco 0, reverb 20.'
-    :'A voz sai pelo notebook junto com a música. Com 2 microfones, cada um ganha nota própria (dueto/batalha). Microfonia? Afaste o mic da caixa.';
+    :'A voz sai pelo notebook junto com a música. Com 2 microfones no dueto, a nota é a média dos dois. Microfonia? Afaste o mic da caixa.';
 }
 $('#directMode').checked=!!S.directMode;updDirectUI();
 $('#directMode').onchange=()=>{S.directMode=directMode();save();updDirectUI();applyAll()};
@@ -1046,20 +1053,34 @@ const SO_ANIMA=k=>!(C.PESOS[k]>0);
 
 /* ===================== show: chamar, cantar, notas ===================== */
 let busy=false,phaseOpen=false,skipFlag=false,current=null,votes=[];
-function wait(ms,onTick){skipFlag=false;return new Promise(res=>{const t0=performance.now();
-  (function f(now){if(skipFlag){skipFlag=false;res();return}const el=now-t0;onTick&&onTick(Math.min(1,el/ms),el);if(el>=ms)res();else raf(f)})(performance.now())})}
+function wait(ms,onTick){skipFlag=false;return new Promise(res=>{let t0=performance.now(),last=t0;
+  (function f(now){if(paused){t0+=now-last;last=now;raf(f);return}last=now;
+    if(skipFlag){skipFlag=false;res();return}const el=now-t0;onTick&&onTick(Math.min(1,el/ms),el);if(el>=ms)res();else raf(f)})(performance.now())})}
+
+/* pausa da festa: segura tudo (música, etapas, fila) e mostra "Já voltamos" no telão, na TV e nos celulares */
+let paused=false,pauseResume=false;
+function setPause(on){
+  on=!!on;if(on===paused)return;paused=on;
+  $('#pauseOv').classList.toggle('show',on);
+  $('#pauseBtn').textContent=on?'▶ Voltar à festa (P)':'⏸️ Pausar festa (P)';$('#pauseBtn').classList.toggle('pri',on);
+  if(on){pauseResume=busy&&!phaseOpen&&!!media.src&&!media.paused;if(pauseResume)media.pause()}
+  else if(pauseResume){pauseResume=false;play()}
+  store.upsert('stage',[{id:'pause',status:on?'on':'off',updated_at:new Date().toISOString()}]).catch(err=>console.error(err));
+}
+$('#pauseBtn').onclick=()=>setPause(!paused);$('#pauseOff').onclick=()=>setPause(false);
 function showPhase(html){$('#phaseCard').innerHTML=html;$('#phase').classList.add('show');phaseOpen=true}
 function hidePhase(){$('#phase').classList.remove('show');phaseOpen=false;$('#confetti').innerHTML=''}
 const people=e=>{const A={name:e.name,unit:e.unit};const B=e.mode!=='solo'&&e.partner?{name:e.partner,unit:e.partner_unit||e.unit}:null;return B?[A,B]:[A]};
-const namesHtml=e=>people(e).map(p=>`${esc(p.name)}${chip(p.unit)}`).join(` <span style="color:var(--dim)">${e.mode==='batalha'?'vs':'&'}</span> `);
+const namesHtml=e=>people(e).map(p=>`${esc(p.name)}${chip(p.unit)}`).join(' <span style="color:var(--dim)">&</span> ');
 
 function renderSingerBar(e){
   if(!e){$('#singerBar').innerHTML='';return}
   const ps=people(e);
-  $('#singerBar').innerHTML=ps.map((p,i)=>`<div class="sg">🎤 ${esc(p.name)}${chip(p.unit)}<span class="nt"></span></div>`).join(e.mode==='batalha'?'<div class="sg disp" style="font-size:26px;color:var(--acc2)">VS</div>':'');
+  $('#singerBar').innerHTML=ps.map((p,i)=>`<div class="sg">🎤 ${esc(p.name)}${chip(p.unit)}<span class="nt"></span></div>`).join('');
 }
 
 async function callNext(entry){
+  if(paused){toast('A festa está em pausa. Aperte P para voltar');return}
   if(busy){toast('Termine a apresentação atual primeiro');return}
   entry=entry||waiting()[0];if(!entry){toast('A fila está vazia');return}
   const song=songs[entry.song_id];
@@ -1070,7 +1091,7 @@ async function callNext(entry){
   await loadSongFor(song);
   mics.forEach(m=>{if(m)m.sc=newScore()});
   if(!micsActive())toast('Microfone desligado: só vai valer voto e aplauso');
-  $('#inName').innerHTML=people(entry).map(p=>esc(p.name)).join(entry.mode==='batalha'?' <span style="color:var(--acc2)">VS</span> ':' & ');
+  $('#inName').innerHTML=people(entry).map(p=>esc(p.name)).join(' & ');
   $('#inUnits').innerHTML=people(entry).map(p=>chip(p.unit)).join(' ')+`<div class="ph-s" style="margin-top:8px">${MODE[entry.mode]}</div>`;
   $('#inSong').textContent=songLabel(song);
   $('#intro').classList.add('show');phaseOpen=true;
@@ -1086,46 +1107,37 @@ async function finishPerformance(){
   media.pause();const e=current;
   const r=mics.map(m=>m?computeScore(m.sc):null),valid=r.filter(Boolean);
   if(micsActive())saveFloors();
-  let mA=null,mB=null;
-  if(e.mode==='batalha'&&r[0]&&r[1]){mA=r[0];mB=r[1]}
-  else if(e.mode==='batalha'){mA=mB=valid[0]||null}
-  else if(e.mode==='dueto'&&valid.length===2){mA={...valid[0],score:Math.round((valid[0].score+valid[1].score)/2)}}
+  let mA=null;
+  if(e.mode!=='solo'&&valid.length===2){mA={...valid[0],score:Math.round((valid[0].score+valid[1].score)/2)}}
   else mA=valid.sort((a,b)=>b.score-a.score)[0]||null;
-  const ps=people(e),battle=e.mode==='batalha'&&ps.length===2;
+  const ps=people(e);
 
   /* 1) nota da máquina */
-  if(mA||mB){
+  if(mA){
     const bar=(l,v)=>v==null?'':`<div class="bar"><span>${l}</span><i><b style="width:${v*100}%"></b></i><em>${Math.round(v*100)}</em></div>`;
     const bars=x=>x?bar('Voz presente',x.voz)+bar('Canto',x.canto)+bar(x.synced?'Entrada nas frases':'Presença',x.timing)+bar('Afinação',x.tuning)+bar('Harmonia',x.harm)+bar('Firmeza',x.stab):'';
-    if(battle&&mA!==mB)showPhase(`<div class="ph-k">🎛️ NOTA DA MÁQUINA</div><div class="vs"><div class="side"><div class="ph-t">${esc(ps[0].name)}</div><div class="ph-mid" id="mA">0</div></div><div class="x">VS</div><div class="side"><div class="ph-t">${esc(ps[1].name)}</div><div class="ph-mid" id="mB">0</div></div></div>`);
-    else showPhase(`<div class="ph-k">🎛️ NOTA DA MÁQUINA</div><div class="ph-t">${namesHtml(e)}</div><div class="ph-big" id="mA">0</div>${bars(mA)}`);
+    showPhase(`<div class="ph-k">🎛️ NOTA DA MÁQUINA</div><div class="ph-t">${namesHtml(e)}</div><div class="ph-big" id="mA">0</div>${bars(mA)}`);
     const ease=k=>1-Math.pow(1-k,3);
-    await wait(4500,k=>{const q=ease(Math.min(1,k/0.6));if($('#mA'))$('#mA').textContent=Math.round((mA?.score||0)*q);if($('#mB'))$('#mB').textContent=Math.round((mB?.score||0)*q)});
+    await wait(4500,k=>{const q=ease(Math.min(1,k/0.6));if($('#mA'))$('#mA').textContent=Math.round(mA.score*q)});
   }
 
   /* 2) aplausos */
-  let aA=null,aB=null;
-  if(C.SEGUNDOS_APLAUSO>0&&micsActive()){
-    if(battle){aA=await measureApplause(ps[0].name);aB=await measureApplause(ps[1].name)}
-    else aA=await measureApplause(ps.map(p=>p.name).join(' & '));
-  }
+  let aA=null;
+  if(C.SEGUNDOS_APLAUSO>0&&micsActive())aA=await measureApplause(ps.map(p=>p.name).join(' & '));
 
   /* 3) votação do público */
-  let pubA=null,pubB=null,nVotes=0;
-  if(C.SEGUNDOS_VOTACAO>0&&!NO_NET){const t=await runVoting(e,battle,ps);pubA=t.a;pubB=t.b;nVotes=t.n}
+  let pubA=null,nVotes=0;
+  if(C.SEGUNDOS_VOTACAO>0&&!NO_NET){const t=await runVoting(e);pubA=t.a;nVotes=t.n}
 
   /* 4) nota final */
   const fA=combine(mA?.score??null,pubA,aA);
-  const fB=battle?combine(mB?.score??null,pubB,aB):null;
-  const rows=[];
-  const mk=(p,m,pub,ap,fin)=>({queue_id:e.id,name:p.name,unit:p.unit,song_title:e.song_title,mode:e.mode,machine:m?.score??null,public_score:pub,applause:ap,final:fin,votes:nVotes});
-  if(battle){if(fA!=null)rows.push(mk(ps[0],mA,pubA,aA,fA));if(fB!=null)rows.push(mk(ps[1],mB,pubB,aB,fB))}
-  else if(fA!=null)ps.forEach(p=>rows.push(mk(p,mA,pubA,aA,fA)));
+  const mode=e.mode==='solo'?'solo':'dueto';
+  const rows=fA==null?[]:ps.map(p=>({queue_id:e.id,name:p.name,unit:p.unit,song_title:e.song_title,mode,machine:mA?.score??null,public_score:pubA,applause:aA,final:fA,votes:nVotes}));
   const record=rows.some(x=>!P.length||x.final>Math.max(...P.map(p=>p.final||0)));
   for(const row of rows){try{await store.insert('performances',row)}catch(err){console.error(err)}}
   try{await store.update('queue',e.id,{status:'done'})}catch(err){}
   await setStage({status:'final',voting_until:null});
-  await showFinal(e,ps,battle,fA,fB,{mA,mB,aA,aB,pubA,pubB,nVotes},record);
+  await showFinal(e,ps,fA,{mA,aA,pubA},record);
   backToLobby();
 }
 
@@ -1156,33 +1168,29 @@ function onVote(ev){
   if(ev.row&&ev.row.queue_id===current.id){if(!votes.some(v=>v.device_id===ev.row.device_id))votes.push(ev.row)}
   else if(!ev.row)store.list('votes').then(all=>{if(current)votes=all.filter(v=>v.queue_id===current.id)}).catch(()=>{});
 }
-function tally(battle){
-  if(battle){const a=votes.filter(v=>v.pick==='a').length,b=votes.filter(v=>v.pick==='b').length,n=a+b;
-    return{n,a:n?Math.round(a/n*100):null,b:n?Math.round(b/n*100):null}}
+function tally(){
   const st=votes.filter(v=>v.stars),n=st.length,avg=n?st.reduce((s,v)=>s+v.stars,0)/n:0;
-  return{n,avg,a:n?Math.round((avg-1)/4*100):null,b:null};
+  return{n,avg,a:n?Math.round((avg-1)/4*100):null};
 }
-async function runVoting(e,battle,ps){
+async function runVoting(e){
   votes=[];
   try{votes=(await store.list('votes')).filter(v=>v.queue_id===e.id)}catch(err){}
   const D=C.SEGUNDOS_VOTACAO*1000;
   await setStage({status:'voting',voting_until:new Date(Date.now()+D).toISOString()});
-  showPhase(`<div class="ph-k">📱 VOTAÇÃO DO PÚBLICO</div><div class="ph-t">${battle?'Quem mandou melhor?':namesHtml(e)}</div>
+  showPhase(`<div class="ph-k">📱 VOTAÇÃO DO PÚBLICO</div><div class="ph-t">${namesHtml(e)}</div>
     <div class="ph-s">Abra o site no celular e vote agora!</div><div class="cdown" id="vCd"></div>
-    ${battle?`<div class="vs"><div class="side"><div class="ph-t">${esc(ps[0].name)}</div><div class="ph-mid" id="vA">0%</div></div><div class="x">VS</div><div class="side"><div class="ph-t">${esc(ps[1].name)}</div><div class="ph-mid" id="vB">0%</div></div></div>`
-      :`<div class="stars" id="vStars">${'<span>★</span>'.repeat(5)}</div><div class="ph-mid" id="vAvg">—</div>`}
+    <div class="stars" id="vStars">${'<span>★</span>'.repeat(5)}</div><div class="ph-mid" id="vAvg">—</div>
     <div class="ph-s" id="vN">0 votos</div>`);
   let lastN=-1;
   await wait(D,(k,el)=>{
     $('#vCd').textContent=Math.max(0,Math.ceil((D-el)/1000))+'s';
-    const t=tally(battle);if(t.n===lastN)return;lastN=t.n;
+    const t=tally();if(t.n===lastN)return;lastN=t.n;
     $('#vN').textContent=t.n+(t.n===1?' voto':' votos');
-    if(battle){$('#vA').textContent=(t.a??0)+'%';$('#vB').textContent=(t.b??0)+'%'}
-    else{$('#vAvg').textContent=t.n?t.avg.toFixed(1):'—';[...$('#vStars').children].forEach((s,i)=>s.classList.toggle('lit',t.n&&i<Math.round(t.avg)))}
+    $('#vAvg').textContent=t.n?t.avg.toFixed(1):'—';[...$('#vStars').children].forEach((s,i)=>s.classList.toggle('lit',t.n&&i<Math.round(t.avg)));
   });
   try{votes=(await store.list('votes')).filter(v=>v.queue_id===e.id)}catch(err){}
   await setStage({status:'result',voting_until:null});
-  return tally(battle);
+  return tally();
 }
 
 function fanfare(good){
@@ -1202,23 +1210,13 @@ const phrase=s=>{
 };
 const recordeTxt=()=>C.FRASE_RECORDE||'🏆 NOVO RECORDE!';
 const starsHtml=s=>{const n=s==null?0:Math.max(1,Math.min(5,Math.round((s-30)/14)));return `<div class="stars">${[0,1,2,3,4].map(i=>`<span class="${i<n?'lit':''}">★</span>`).join('')}</div>`};
-async function showFinal(e,ps,battle,fA,fB,d,record){
+async function showFinal(e,ps,fA,d,record){
   const det=(m,ap,pub)=>`<div class="ph-s">🎛️ máquina ${m?.score??'—'} · 👏 aplausos ${ap??'—'} · 📱 público ${pub??'—'}${SO_ANIMA('aplausos')&&SO_ANIMA('publico')&&m?' <span style="opacity:.7">(só a máquina vale ponto)</span>':''}</div>`;
-  if(battle){
-    const winA=(fA??0)>=(fB??0),win=winA?ps[0]:ps[1],tie=fA===fB;
-    showPhase(`<div class="ph-k">🏆 RESULTADO DA BATALHA</div>
-      <div class="vs"><div class="side ${!tie&&winA?'win':''}"><div class="ph-t">${esc(ps[0].name)}${chip(ps[0].unit)}</div><div class="ph-mid">${fA??'—'}</div>${det(d.mA,d.aA,d.pubA)}</div>
-      <div class="x">VS</div><div class="side ${!tie&&!winA?'win':''}"><div class="ph-t">${esc(ps[1].name)}${chip(ps[1].unit)}</div><div class="ph-mid">${fB??'—'}</div>${det(d.mB,d.aB,d.pubB)}</div></div>
-      <div class="msg">${tie?esc(C.FRASE_EMPATE||'EMPATE! 🤝'):esc((C.FRASE_BATALHA||'Vitória de {nome}! 🔥').replace('{nome}',win.name))}${record?'<br>'+esc(recordeTxt()):''}</div>
-      <div class="cardBtns"><button class="pri" id="fNext">▶ Chamar próximo</button><button id="fHome">Voltar ao telão</button></div>`);
-    fanfare(true);confetti();
-  }else{
-    showPhase(`<div class="ph-k">⭐ NOTA FINAL</div><div class="ph-t">${namesHtml(e)}</div><div class="ph-s">${esc(e.song_title)}</div>
-      <div class="ph-big">${fA??'—'}</div>${starsHtml(fA)}<div class="msg">${fA==null?'Sem nota desta vez':esc(phrase(fA))}${record?'<br>'+esc(recordeTxt()):''}</div>${det(d.mA,d.aA,d.pubA)}
-      <div class="ph-s" style="margin-top:6px">${fA!=null?'Pontos para '+ps.map(p=>unitOf(p.unit).nome).filter((v,i,a)=>a.indexOf(v)===i).join(' e ')+'!':''}</div>
-      <div class="cardBtns"><button class="pri" id="fNext">▶ Chamar próximo</button><button id="fHome">Voltar ao telão</button></div>`);
-    fanfare((fA??0)>=70);if((fA??0)>=85||record)confetti();
-  }
+  showPhase(`<div class="ph-k">⭐ NOTA FINAL</div><div class="ph-t">${namesHtml(e)}</div><div class="ph-s">${esc(e.song_title)}</div>
+    <div class="ph-big">${fA??'—'}</div>${starsHtml(fA)}<div class="msg">${fA==null?'Sem nota desta vez':esc(phrase(fA))}${record?'<br>'+esc(recordeTxt()):''}</div>${det(d.mA,d.aA,d.pubA)}
+    <div class="ph-s" style="margin-top:6px">${fA!=null?'Pontos para '+ps.map(p=>unitOf(p.unit).nome).filter((v,i,a)=>a.indexOf(v)===i).join(' e ')+'!':''}</div>
+    <div class="cardBtns"><button class="pri" id="fNext">▶ Chamar próximo</button><button id="fHome">Voltar ao telão</button></div>`);
+  fanfare((fA??0)>=70);if((fA??0)>=85||record)confetti();
   let next=false;
   $('#fNext').onclick=()=>{next=true;skipFlag=true};$('#fHome').onclick=()=>{skipFlag=true};
   await wait(Math.max(2,+C.SEGUNDOS_NOTA_FINAL||6)*1000);
@@ -1264,6 +1262,8 @@ document.addEventListener('keydown',e=>{
   const tag=e.target.tagName,typing=(tag==='INPUT'&&!['range','checkbox','button','file'].includes(e.target.type))||tag==='TEXTAREA';
   if(typing){if(e.key==='Escape')e.target.blur();return}
   if(e.key.toLowerCase()==='t'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();toggleTV();return}
+  if(e.key.toLowerCase()==='p'&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!syncing){e.preventDefault();setPause(!paused);return}
+  if(paused){if(e.key==='Escape'){e.preventDefault();setPause(false)}else if(e.code==='Space'||e.key==='Enter')e.preventDefault();return}
   if(e.key.toLowerCase()==='i'&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!phaseOpen){e.preventDefault();if(!skipIntro())toast('Sem introdução para pular');return}
   if(tag==='SELECT')return;
   if(!syncing&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&(e.key==='+'||e.key==='='||e.key==='-'||e.key==='_')){e.preventDefault();nudge(e.key==='-'||e.key==='_'?-0.2:0.2);return}
@@ -1407,7 +1407,7 @@ function morph(src,dst){
   while(dc.length>sc.length)dst.lastChild.remove();
   for(let i=0;i<sc.length;i++){if(i<dc.length)morph(sc[i],dc[i]);else dst.appendChild(dst.ownerDocument.importNode(sc[i],true))}
 }
-const MIRROR=['lyrics','singerBar','tLeft','intro','phase','roleta','confetti'];
+const MIRROR=['lyrics','singerBar','tLeft','intro','phase','roleta','confetti','pauseOv'];
 function telaTick(){
   if(!TW)return;if(TW.closed){TW=null;$('#telaBtn').classList.remove('on');return}
   const d=TW.document;if(!d.body)return;
@@ -1641,7 +1641,7 @@ function step(){
     curEl.style.setProperty('--p',(Math.max(0,Math.min(1,(t-c.t)/dur))*100).toFixed(1)+'%')}
   else if(cdEl){const r=L[0].t-t;cdEl.textContent=(r<=3.5&&!media.paused)?Math.ceil(r):'♪ ♪ ♪'}
 }
-renderCatalog();renderLyricsStatic();refresh();setStage({status:'lobby',queue_id:null,voting_until:null});frame();
+renderCatalog();renderLyricsStatic();refresh();setStage({status:'lobby',queue_id:null,voting_until:null});store.upsert('stage',[{id:'pause',status:'off',updated_at:new Date().toISOString()}]).catch(()=>{});frame();
 </script>
 </body>
 </html>
