@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oscar · Certificados</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&family=Great+Vibes&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="oscar-core.js?v=202611170100"></script>
+<style>
+@page{size:A4 landscape;margin:0}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html{color-scheme:light}
+body{margin:0;background:#e9e4dc;font-family:Montserrat,system-ui,sans-serif;color:#1a120b}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;padding:12px 16px;background:#161210;color:#f6f1ec}
+.bar button{font:inherit;padding:9px 14px;border-radius:10px;border:1px solid #352b25;background:#201a17;color:#f6f1ec;cursor:pointer}
+.bar button.pri{background:#d9b46a;border-color:#d9b46a;color:#0f0806;font-weight:800}
+.bar label{display:flex;gap:6px;align-items:center;font-size:14px}
+.bar .tip{font-size:13px;color:#a39588}
+#msg{max-width:720px;margin:40px auto;text-align:center;font-size:17px;line-height:1.6}
+.sheet{width:297mm;height:210mm;margin:16px auto;background:#fffdf7;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);page-break-after:always;break-after:page}
+.sheet::before{content:"";position:absolute;inset:8mm;border:2.2mm solid #b8893a;border-radius:3mm;pointer-events:none}
+.sheet::after{content:"";position:absolute;inset:12mm;border:.5mm solid #d9b46a;border-radius:2mm;pointer-events:none}
+.bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#f7e7c1 0%,transparent 60%),radial-gradient(ellipse at 50% 120%,#f3dfb4 0%,transparent 55%)}
+.corner{position:absolute;width:30mm;height:30mm;border:1.2mm solid #b8893a;border-radius:50%;opacity:.25}
+.c1{left:-12mm;top:-12mm}.c2{right:-12mm;top:-12mm}.c3{left:-12mm;bottom:-12mm}.c4{right:-12mm;bottom:-12mm}
+.in{position:absolute;inset:16mm 22mm;display:flex;flex-direction:column;align-items:center;text-align:center}
+.logo{height:16mm;margin-bottom:2mm;filter:brightness(.28) sepia(1) saturate(2.4)}
+.disp{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.04em}
+.gold{padding-top:.12em;background:linear-gradient(180deg,#d9b05a,#a3772c 55%,#6e4c17);-webkit-background-clip:text;background-clip:text;color:transparent}
+.k{font-size:4.2mm;letter-spacing:.6em;color:#8a6a2c;font-weight:700}
+.t{font-size:22mm;line-height:.9;margin-top:1mm}
+.ev{font-size:7mm;color:#6e4c17;margin-top:-1mm}
+.conf{margin-top:6mm;font-size:4.6mm;color:#5a4a3a}
+.nm{font-family:"Great Vibes",cursive;font-size:21mm;line-height:1.15;color:#3a2a10;margin-top:1mm;outline:none;min-width:60%;border-bottom:.4mm solid #d9b46a;padding:0 6mm}
+.nm:focus{background:#fff6dc}
+.un{margin-top:3mm}
+.chip{display:inline-block;padding:1mm 4mm;border-radius:99mm;font-weight:800;color:#120a04;font-size:4.2mm}
+.cat{margin-top:5mm;font-size:4.8mm;color:#5a4a3a}
+.cat b{display:block;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:12mm;letter-spacing:.04em;color:#3a2a10;line-height:1.05;margin-top:1mm}
+.cat i{display:block;font-size:4.2mm;color:#7a6a5a;margin-top:1mm}
+.foot{margin-top:auto;width:100%;display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10mm}
+.sig{border-top:.4mm solid #6e5a3a;padding-top:1.5mm;font-size:3.6mm;color:#5a4a3a;outline:none}
+.seal{width:30mm;height:30mm;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f8e1a0,#d9b05a 45%,#9a6f28);display:flex;align-items:center;justify-content:center;flex-direction:column;box-shadow:0 0 0 1.4mm #fffdf7,0 0 0 2mm #b8893a;color:#3a2a10}
+.seal .s1{font-size:11mm;line-height:1}
+.seal .s2{font-family:"Bebas Neue",Impact,sans-serif;font-size:4mm;letter-spacing:.1em}
+.dt{font-size:3.6mm;color:#7a6a5a;margin-top:2mm}
+.sheet.hon .nm{font-size:18mm}
+@media print{body{background:#fff}.bar,#msg{display:none}.sheet{margin:0;box-shadow:none}}
+@media screen and (max-width:1100px){.sheet{transform:scale(.4);transform-origin:top center;margin-bottom:-120mm}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <button class="pri" onclick="print()">🖨️ Imprimir</button>
+  <label><input type="checkbox" id="hon"> Também os indicados (menção honrosa)</label>
+  <label><input type="checkbox" id="demo"> Ver modelo</label>
+  <span class="tip">Clique no nome ou nas assinaturas para corrigir antes de imprimir. No Chrome, marque "Gráficos de plano de fundo".</span>
+</div>
+<div id="msg"></div>
+<div id="out"></div>
+<script>
+const O=window.OSCAR,{C,store,esc,unitOf}=O,$=s=>document.querySelector(s);
+const chip=id=>{const u=unitOf(id);return `<span class="chip" style="background:${u.cor}">${esc(u.nome)}</span>`};
+let CFG=O.CFG0,CATS=[],FIN=[];
+const hoje=new Date().toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'});
+const SIG=JSON.parse(localStorage.getItem('o_cert_sig')||'null')||['Direção '+C.MARCA,'Comissão do Oscar'];
+
+function sheet({name,unit,cat,hon,isUnit}){
+  return `<div class="sheet ${hon?'hon':''}"><div class="bg"></div><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+  <div class="in">
+    ${C.LOGO_URL?`<img class="logo" src="${esc(C.LOGO_URL)}" alt="">`:''}
+    <div class="k">${hon?'MENÇÃO HONROSA':'CERTIFICADO'}</div>
+    <div class="t disp gold">${esc(O.titulo.replace(/\s*\d{4}\s*$/,''))}</div>
+    <div class="ev disp">${esc(C.EVENTO||'')}</div>
+    <div class="conf">${isUnit?'Conferido à equipe da unidade':hon?'Reconhecemos que':'Conferido a'}</div>
+    <div class="nm" contenteditable="true" spellcheck="false">${esc(name)}</div>
+    ${unit&&!isUnit?`<div class="un">${chip(unit)}</div>`:''}
+    <div class="cat">${hon?'foi indicado(a) e chegou à final da categoria':'vencedor(a) da categoria'}<b>${esc((cat.emoji||'🏆')+' '+cat.nome)}</b>${cat.descricao?`<i>“${esc(cat.descricao)}”</i>`:''}</div>
+    <div class="foot">
+      <div class="sig" contenteditable="true" spellcheck="false" data-sig="0">${esc(SIG[0])}</div>
+      <div><div class="seal"><div class="s1">${hon?'⭐':'🏆'}</div><div class="s2">${esc(new Date().getFullYear())}</div></div><div class="dt">${esc(hoje)}</div></div>
+      <div class="sig" contenteditable="true" spellcheck="false" data-sig="1">${esc(SIG[1])}</div>
+    </div>
+  </div></div>`;
+}
+
+function render(){
+  const R=CFG.resultado||{},demo=$('#demo').checked,hon=$('#hon').checked,list=[];
+  CATS.forEach(c=>{
+    const r=R[c.id];
+    if(demo&&!r){if(!list.length)list.push({name:'Nome do Vencedor',unit:C.UNIDADES[0].id,cat:c});return}
+    if(!r)return;
+    const ws=r.winners||[];
+    ws.forEach(w=>list.push({name:w.name,unit:w.unit,cat:c,isUnit:c.tipo==='unidade'}));
+    if(hon&&c.tipo==='voto'){const win=new Set(ws.map(w=>O.key(w.name)+'|'+w.unit));
+      FIN.filter(f=>f.category_id===c.id&&!win.has(O.key(f.name)+'|'+f.unit)).forEach(f=>list.push({name:f.name,unit:f.unit,cat:c,hon:true}))}
+  });
+  $('#msg').innerHTML=list.length?`<b>${list.length}</b> certificado${list.length===1?'':'s'} prontos para imprimir.`:
+    (Object.keys(R).length?'Nenhum certificado.':'🏆 Os certificados aparecem aqui conforme a cerimônia revela os vencedores no telão.<br>Marque <b>Ver modelo</b> para ver como fica.');
+  $('#out').innerHTML=list.map(sheet).join('');
+}
+// assinaturas editadas ficam lembradas neste computador
+document.addEventListener('input',e=>{const d=e.target.closest('[data-sig]');if(!d)return;SIG[+d.dataset.sig]=d.textContent.trim();
+  document.querySelectorAll(`[data-sig="${d.dataset.sig}"]`).forEach(x=>{if(x!==d)x.textContent=SIG[+d.dataset.sig]});try{localStorage.setItem('o_cert_sig',JSON.stringify(SIG))}catch(err){}});
+$('#hon').onchange=render;$('#demo').onchange=render;
+(async()=>{
+  try{CFG=await O.getConfig();CATS=(await O.getCats()).filter(c=>c.ativa);FIN=await store.list('oscar_finalists')}
+  catch(e){$('#msg').textContent='Não deu para carregar: '+(e.message||e);return}
+  render();
+})();
+</script>
+</body>
+</html>

@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611160200"></script>
-<script src="spotify.js?v=202611160200"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="spotify.js?v=202611170100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -187,6 +187,12 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 #pauseOv .pk{font-family:'Bebas Neue',sans-serif;letter-spacing:.2em;color:var(--acc);font-size:clamp(22px,3vw,40px)}
 #pauseOv .pn{font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,11vw,170px);line-height:.95}
 #pauseOv .ps{opacity:.8;font-size:clamp(16px,2vw,28px)}
+#pauseOv .pph{margin-top:8px;background:#fbf7f0;padding:12px 12px 10px;border-radius:6px;transform:rotate(-1.5deg);box-shadow:0 24px 60px rgba(0,0,0,.6);max-width:84vw}
+#pauseOv .pph img{display:block;max-height:52vh;max-width:80vw;object-fit:contain;border-radius:2px}
+#pauseOv .pph small{display:block;margin-top:8px;color:#3a2a1a;font-weight:800;font-size:clamp(14px,1.5vw,22px)}
+#pauseOv.hasPh .pn{font-size:clamp(44px,6.5vw,100px)}
+#pauseOv.hasPh{gap:6px}
+#pauseOv .posc{color:var(--acc);font-weight:800;font-size:clamp(15px,1.7vw,26px)}
 #intro .k{font-family:"Bebas Neue",Impact,sans-serif;font-size:36px;color:var(--acc);letter-spacing:10px}
 #intro .nm{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(60px,10vw,150px);line-height:.95;animation:pop .6s ease}
 #intro .sg{font-size:28px;color:var(--dim);margin-top:14px}
@@ -356,7 +362,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 <div id="phase" class="ov"><div class="card" id="phaseCard"></div></div>
 <div id="roleta" class="ov"><div class="card"><div class="ph-k">🎲 ROLETA DO KARAOKÊ</div><div class="nm" id="rolName"></div><div id="rolUnit"></div><div class="cardBtns"><button id="rolAgain">Girar de novo</button><button id="rolClose" class="pri">Fechar</button></div></div></div>
 <div id="confetti"></div>
-<div id="pauseOv"><div class="pk">⏸️ INTERVALO</div><div class="pn">JÁ VOLTAMOS!</div><div class="ps">A fila continua guardada 😉</div><div class="cardBtns"><button class="pri" id="pauseOff">▶ Voltar à festa (P)</button></div></div>
+<div id="pauseOv"><div class="pk">⏸️ INTERVALO</div><div class="pn">JÁ VOLTAMOS!</div><div class="ps">A fila continua guardada 😉</div><div class="pph hidden" id="pausePh"><img alt=""><small></small></div><div class="posc hidden" id="pauseOsc"></div><div class="cardBtns"><button class="pri" id="pauseOff">▶ Voltar à festa (P)</button></div></div>
 <div id="catModal" class="kdlg"><div class="kbox catbox" role="dialog" aria-modal="true" aria-label="Músicas do notebook">
   <div class="catHead"><span class="kt">🎵 Músicas do notebook</span><button id="catClose" title="Fechar (Esc)">✕</button></div>
   <div class="catTools"><button id="folderBtn" class="pri">📂 Escolher pasta de músicas</button>
@@ -1089,12 +1095,22 @@ function wait(ms,onTick){skipFlag=false;return new Promise(res=>{let t0=performa
 let paused=false,pauseResume=false;
 function setPause(on){
   on=!!on;if(on===paused)return;paused=on;
-  $('#pauseOv').classList.toggle('show',on);
+  $('#pauseOv').classList.toggle('show',on);pausePhoto();
   $('#pauseBtn').textContent=on?'▶ Voltar à festa (P)':'⏸️ Pausar festa (P)';$('#pauseBtn').classList.toggle('pri',on);
   if(on){pauseResume=busy&&!phaseOpen&&!!media.src&&!media.paused;if(pauseResume)media.pause()}
   else if(pauseResume){pauseResume=false;play()}
   store.upsert('stage',[{id:'pause',status:on?'on':'off',updated_at:new Date().toISOString()}]).catch(err=>console.error(err));
 }
+/* na pausa, o telão passa as fotos aprovadas do tapete vermelho */
+let pphI=0;
+function pausePhoto(){
+  const box=$('#pausePh'),ph=OSC.ph.length&&paused?OSC.ph[pphI++%OSC.ph.length]:null;
+  box.classList.toggle('hidden',!ph);$('#pauseOv').classList.toggle('hasPh',!!ph);
+  if(ph){const im=box.querySelector('img');if(im.getAttribute('src')!==ph.url)im.setAttribute('src',ph.url);box.querySelector('small').textContent='📸 '+(ph.autor||'')+(ph.unit?' · '+unitOf(ph.unit).nome:'')}
+  const o=$('#pauseOsc'),on=paused&&!NO_NET&&(OSC.fase==='indicacao'||OSC.fase==='votacao');o.classList.toggle('hidden',!on);
+  if(on)o.textContent=OSC.fase==='indicacao'?'🏆 Aproveite o intervalo: indique os colegas no Oscar pelo celular!':'🏆 Aproveite o intervalo: vote no Oscar pelo celular!';
+}
+setInterval(()=>{if(paused)pausePhoto()},6000);
 $('#pauseBtn').onclick=()=>setPause(!paused);$('#pauseOff').onclick=()=>setPause(false);
 function showPhase(html){$('#phaseCard').innerHTML=html;$('#phase').classList.add('show');phaseOpen=true}
 function hidePhase(){$('#phase').classList.remove('show');phaseOpen=false;$('#confetti').innerHTML=''}

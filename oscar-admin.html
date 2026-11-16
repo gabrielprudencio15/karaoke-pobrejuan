@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611160200"></script>
-<script src="oscar-core.js?v=202611160200"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="oscar-core.js?v=202611170100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#d9b46a;--gold2:#b09763;--ok:#4cc38a;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -76,6 +76,11 @@ th{color:var(--dim);font-weight:600;font-size:13px}
 .kb{display:flex;gap:10px;justify-content:center;margin-top:18px}.kb button{flex:1;max-width:210px;font-weight:700}
 #zoom{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:150;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 #zoom img{max-width:95vw;max-height:95vh}
+.cdBox{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cdBox .big{font-family:"Bebas Neue",Impact,sans-serif;font-size:34px;color:var(--gold);min-width:80px}
+.cdBox.low .big{color:#ff6b6b}
+.sus{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.sus:last-child{border-bottom:none}
 </style>
 </head>
 <body>
@@ -93,11 +98,13 @@ th{color:var(--dim);font-weight:600;font-size:13px}
     <h2>Fase atual</h2>
     <div class="fases" id="fases"></div>
     <small id="faseHint"></small>
+    <div class="box cdBox" id="cdBox"></div>
     <div class="grid" style="margin-top:14px">
       <div class="box"><h3 style="margin-top:0">Ajustes</h3>
         <div class="row" style="margin:6px 0">Finalistas por categoria <input type="number" id="cTop" min="2" max="8" style="width:70px"></div>
         <div class="row" style="margin:6px 0">Unidade do Ano: peso Oscar <input type="number" id="cPo" min="0" max="1" step="0.05" style="width:80px"> peso karaokê <input type="number" id="cPk" min="0" max="1" step="0.05" style="width:80px"></div>
         <div class="row" style="margin:6px 0">Discurso (segundos, 0 = sem contador) <input type="number" id="cDs" min="0" max="120" style="width:70px"></div>
+        <label class="row" style="margin:6px 0;gap:6px"><input type="checkbox" id="cRetro"> 🎞️ Retrospectiva do karaokê no começo da cerimônia</label>
         <button class="pri" id="cSave" style="margin-top:8px">Salvar ajustes</button>
       </div>
       <div class="box"><h3 style="margin-top:0">Participação por unidade</h3><div id="part"></div></div>
@@ -106,11 +113,15 @@ th{color:var(--dim);font-weight:600;font-size:13px}
           <a href="oscar-telao.html" target="_blank"><button class="full" style="width:100%">🎬 Abrir o telão da cerimônia</button></a>
           <a href="oscar.html" target="_blank"><button style="width:100%">📱 Página do celular</button></a>
           <a href="oscar-qr.html" target="_blank"><button style="width:100%">🖨️ QR Codes para imprimir</button></a>
+          <a href="oscar-certificados.html" target="_blank"><button style="width:100%">📜 Certificados dos vencedores</button></a>
+          <a href="checagem.html" target="_blank"><button style="width:100%">✅ Checagem pré-festa</button></a>
         </div>
       </div>
     </div>
     <h3>Ao vivo por categoria</h3>
     <div class="box"><table><thead><tr><th>Categoria</th><th class="num">Indicações</th><th class="num">Pessoas indicadas</th><th class="num">Finalistas</th><th class="num">Votos</th></tr></thead><tbody id="live"></tbody></table></div>
+    <h3>🕵️ Mesma pessoa em vários celulares</h3>
+    <div class="box"><small>Quem indica/vota com o mesmo nome e unidade em mais de um celular (aba anônima, outro navegador, celular emprestado...). Em cada categoria vale o 1º; os repetidos podem ser apagados. Atenção: pode ser só gente com o mesmo nome!</small><div id="susp" style="margin-top:8px"></div></div>
     <div class="row" style="margin-top:14px">
       <button id="csvBtn">⬇️ Exportar resultados (CSV)</button>
       <label class="row" style="gap:6px"><input type="checkbox" id="showRes"> 👁️ Mostrar quem está ganhando (spoiler!)</label>
@@ -247,7 +258,8 @@ const FASE_HINT={indicacao:'Celulares indicam colegas. Depois escolha os finalis
 function renderPainel(){
   $('#fases').innerHTML=Object.entries(O.FASES).map(([k,v])=>`<button data-f="${k}" class="${CFG.fase===k?'on':''}">${v}</button>`).join('');
   $('#faseHint').textContent=FASE_HINT[CFG.fase]||'';
-  if(document.activeElement.tagName!=='INPUT'){$('#cTop').value=CFG.top_n;$('#cPo').value=CFG.peso_oscar;$('#cPk').value=CFG.peso_karaoke;$('#cDs').value=CFG.discurso_seg}
+  if(document.activeElement.tagName!=='INPUT'){$('#cTop').value=CFG.top_n;$('#cPo').value=CFG.peso_oscar;$('#cPk').value=CFG.peso_karaoke;$('#cDs').value=CFG.discurso_seg;$('#cRetro').checked=CFG.retro!==false}
+  renderCd();renderSusp();
   const show=$('#showRes').checked;
   $('#live').innerHTML=CATS.filter(c=>c.ativa).map(c=>{
     if(c.tipo!=='voto')return `<tr><td>${esc(c.emoji+' '+c.nome)}</td><td colspan="4" class="dim">${c.tipo==='voz_karaoke'?'automática: maior nota do karaokê ('+PERF.length+' apresentações)':'automática: calculada no final'}</td></tr>`;
@@ -259,6 +271,43 @@ function renderPainel(){
     <tr><td><b>Total</b></td><td class="num"><b>${new Set(NOM.map(r=>r.device_id)).size}</b></td><td class="num"><b>${new Set(VOTES.map(r=>r.device_id)).size}</b></td></tr></tbody></table><small>Conta celulares (cada celular é uma pessoa).</small>`;
 }
 $('#showRes').onchange=renderPainel;
+
+/* "fecha em X minutos": os celulares mostram a contagem e vibram */
+const NEXT={indicacao:'votacao',votacao:'cerimonia'};
+function renderCd(){
+  const b=$('#cdBox');if(!b)return;
+  if(!NEXT[CFG.fase]){b.classList.add('hidden');return}b.classList.remove('hidden');
+  const left=O.secsLeft(CFG),oq=CFG.fase==='indicacao'?'a indicação':'a votação';
+  const html=left==null?`⏰ Avisar os celulares que ${oq} vai fechar: ${[5,10,15,20].map(m=>`<button class="sm" data-cd="${m}">${m} min</button>`).join(' ')}`
+    :left>0?`<span class="big">${O.fmtLeft(left)}</span> para fechar ${oq} (os celulares estão vendo) <button class="sm" data-cd="+5">+5 min</button> <button class="sm" data-cd="0">❌ Cancelar contagem</button>`
+    :`<span class="big">⏰</span> <b>Tempo esgotado!</b> <button class="pri sm" data-cd="next">Mudar para ${O.FASES[NEXT[CFG.fase]]}</button> <button class="sm" data-cd="0">Cancelar</button>`;
+  b.classList.toggle('low',left!=null&&left<=60);
+  if(b.dataset.h!==html){b.dataset.h=html;b.innerHTML=html}
+}
+setInterval(()=>{if(TAB==='painel')renderCd()},1000);
+$('#cdBox').onclick=async e=>{
+  const v=e.target.closest('button')?.dataset.cd;if(v==null)return;
+  if(v==='next'){$(`#fases button[data-f="${NEXT[CFG.fase]}"]`).click();return}
+  if(v==='0'){await saveCfg({fecha_em:null});toast('Contagem cancelada');return}
+  const base=v.startsWith('+')&&CFG.fecha_em?Math.max(Date.now(),Date.parse(CFG.fecha_em)):Date.now();
+  await saveCfg({fecha_em:new Date(base+parseInt(v,10)*60000).toISOString()});toast('Os celulares estão vendo a contagem ⏰');
+};
+
+/* mesma pessoa em vários celulares */
+let SUSP=[];
+function renderSusp(){
+  SUSP=O.suspeitos(NOM,VOTES);
+  $('#susp').innerHTML=SUSP.length?SUSP.map((g,i)=>`<div class="sus"><b>${esc(g.name)}</b>${chip(g.unit)}<span class="dim">${g.devices} celulares · ${g.noms} indicações · ${g.votes} votos</span><span style="flex:1"></span>
+    ${g.extras.length?`<button class="sm danger" data-s="${i}">🗑️ Apagar ${g.extras.length} repetido${g.extras.length===1?'':'s'}</button>`:'<small>sem repetidos na mesma categoria</small>'}</div>`).join(''):'<p class="dim" style="margin:0">Nenhum caso 👍</p>';
+}
+$('#susp').onclick=async e=>{
+  const g=SUSP[+e.target.closest('button[data-s]')?.dataset.s];if(!g)return;
+  const nv=g.extras.filter(r=>r.kind==='vote').length,nn=g.extras.length-nv;
+  if(!await kConfirm(`${g.name} (${g.unit}) aparece em ${g.devices} celulares.
+
+Apagar ${nv} voto(s) e ${nn} indicação(ões) repetidos? Fica valendo o 1º de cada categoria.`,{icon:'🕵️',ok:'Apagar repetidos',danger:true}))return;
+  try{for(const r of g.extras)await store.remove(r.kind==='vote'?'oscar_votes':'oscar_nominations',r.id);toast('Repetidos apagados ✅');load()}catch(err){toast('Erro: '+(err.message||err))}
+};
 $('#fases').onclick=async e=>{
   const b=e.target.closest('button');if(!b||b.dataset.f===CFG.fase)return;const f=b.dataset.f;
   let msg=`Mudar a fase para "${O.FASES[f]}"?`;
@@ -266,10 +315,16 @@ $('#fases').onclick=async e=>{
   if(f==='cerimonia')msg+='\n\nA votação fecha.';
   if(f==='indicacao'&&CFG.fase!=='indicacao')msg+='\n\nOs celulares voltam a poder indicar.';
   if(!await kConfirm(msg,{icon:'🔀',ok:'Mudar fase'}))return;
-  await saveCfg({fase:f});toast('Fase: '+O.FASES[f]);
+  await saveCfg({fase:f,fecha_em:null});toast('Fase: '+O.FASES[f]);
 };
-async function saveCfg(patch){try{await store.upsert('oscar_config',[{id:'main',...patch,updated_at:new Date().toISOString()}]);CFG={...CFG,...patch};render()}catch(e){toast('Não salvou: '+(e.message||e))}}
-$('#cSave').onclick=()=>saveCfg({top_n:Math.max(2,Math.min(8,+$('#cTop').value||4)),peso_oscar:Math.max(0,+$('#cPo').value||0),peso_karaoke:Math.max(0,+$('#cPk').value||0),discurso_seg:Math.max(0,Math.min(120,+$('#cDs').value||0))}).then(()=>toast('Ajustes salvos ✅'));
+async function saveCfg(patch){
+  try{await store.upsert('oscar_config',[{id:'main',...patch,updated_at:new Date().toISOString()}]);CFG={...CFG,...patch};render()}
+  catch(e){
+    // banco sem as colunas novas (oscar.sql antigo): salva o resto e avisa
+    if(/fecha_em|retro/.test((e&&e.message)||'')){const {fecha_em,retro,...rest}=patch;toast('⚠️ Rode o oscar.sql de novo no Supabase para liberar a contagem e a retrospectiva');if(Object.keys(rest).length)return saveCfg(rest);return}
+    toast('Não salvou: '+(e.message||e))}
+}
+$('#cSave').onclick=()=>saveCfg({top_n:Math.max(2,Math.min(8,+$('#cTop').value||4)),peso_oscar:Math.max(0,+$('#cPo').value||0),peso_karaoke:Math.max(0,+$('#cPk').value||0),discurso_seg:Math.max(0,Math.min(120,+$('#cDs').value||0)),retro:$('#cRetro').checked}).then(()=>toast('Ajustes salvos ✅'));
 
 /* CSV */
 const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
@@ -290,7 +345,7 @@ $('#zeroBtn').onclick=async()=>{
   try{
     await store.removeFiles([...PH.map(p=>p.path),...FIN.map(f=>f.photo_path)].filter(Boolean)).catch(e=>console.warn(e));
     for(const t of ['oscar_votes','oscar_finalists','oscar_nominations','oscar_photos'])await store.clear(t);
-    await saveCfg({fase:'indicacao',resultado:{}});await load();toast('Oscar zerado ✅');
+    await saveCfg({fase:'indicacao',resultado:{},fecha_em:null});await load();toast('Oscar zerado ✅');
   }catch(e){toast('Erro ao zerar: '+(e.message||e))}
 };
 

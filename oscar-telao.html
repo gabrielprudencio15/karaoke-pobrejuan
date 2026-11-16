@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611160200"></script>
-<script src="oscar-core.js?v=202611160200"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="oscar-core.js?v=202611170100"></script>
 <style>
 :root{--bg:#070504;--txt:#f6f1ec;--dim:#a39588;--gold:#e3bf6f;--gold2:#b08a3a;--red:#c41d2c;--ink:#120a04}
 *{box-sizing:border-box}
@@ -40,6 +40,15 @@ body.mouse{cursor:default}
 .op-s{font-size:clamp(34px,5.5vw,100px);margin-top:1vh}
 .statue{font-size:clamp(80px,13vh,170px);animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 30px rgba(227,191,111,.6))}
 @keyframes float{50%{transform:translateY(-12px)}}
+/* retrospectiva */
+.rg{display:flex;flex-wrap:wrap;justify-content:center;gap:2.4vw;max-width:94vw;margin-top:4vh}
+.rs{width:clamp(220px,21vw,400px);padding:3vh 1.4vw;border:2px solid rgba(227,191,111,.45);border-radius:22px;background:rgba(20,13,6,.72);opacity:0}
+.rs.show{opacity:1;animation:pop .7s cubic-bezier(.2,1.4,.4,1)}
+.rs .ri{font-size:clamp(44px,7vh,90px);line-height:1}
+.rs .rv{font-size:clamp(60px,9vw,170px);line-height:.95}
+.rs .rv.t{font-size:clamp(34px,3.6vw,70px);line-height:1;margin:1vh 0}
+.rs .rl{font-size:clamp(17px,1.6vw,30px);color:#e9dccb}
+.rs .rx{font-size:clamp(15px,1.3vw,24px);color:var(--gold);margin-top:.6vh}
 /* categoria */
 .c-n{font-size:clamp(18px,2vw,32px);letter-spacing:.35em;color:var(--dim)}
 .c-em{font-size:clamp(90px,18vh,220px);line-height:1.1}
@@ -206,6 +215,8 @@ let STEPS=[],I=0;
 function buildSteps(){
   const cur=STEPS[I]&&STEPS[I].id;
   const S=[{id:'abertura',k:'abertura',label:'🎬 Abertura'}];
+  // retrospectiva do karaokê (dá para desligar no admin)
+  if(CFG.retro!==false&&O.retro(PERF).total>0)S.push({id:'retro1',k:'retro',p:1,label:'🎞️ Retrospectiva: números da noite'},{id:'retro2',k:'retro',p:2,label:'🎞️ Retrospectiva: destaques'});
   const cs=CATS.filter(c=>c.tipo==='unidade'||(c.tipo==='voto'?FIN.some(f=>f.category_id===c.id):PERF.length));
   cs.forEach((c,n)=>{
     const L=s=>`${c.emoji||'🏆'} ${c.nome}: ${s}`;
@@ -253,6 +264,19 @@ function show(){
       <div class="op-t disp goldtxt">OSCAR<span class="shine disp">OSCAR</span></div><div class="op-s disp goldtxt">${esc(O.titulo.replace(/^OSCAR\s*/i,''))}</div>
       <div class="c-d" style="font-style:normal">${esc(C.EVENTO)}</div></div>`);
     shimmer();
+  }
+  else if(s.k==='retro'){
+    const R=O.retro(PERF);let cards;
+    if(s.p===1)cards=[['🎤',R.total,R.total===1?'música cantada':'músicas cantadas'],['🙋',R.cantores,R.cantores===1?'cantor(a)':'cantores'],['👯',R.duetos,R.duetos===1?'dueto':'duetos'],['⭐',R.media,'nota média da noite']].map(([i,v,l])=>`<div class="rs"><div class="ri">${i}</div><div class="rv disp goldtxt" data-n="${v}">0</div><div class="rl">${l}</div></div>`);
+    else cards=[
+      R.primeira&&['🥇','Abriu a noite',R.primeira.name,R.primeira.unit,R.primeira.song],
+      R.musica&&['🔁','Música mais cantada',R.musica.song,null,R.musica.n+' vezes'],
+      R.cantor&&['🎙️','Dono(a) do microfone',R.cantor.name,R.cantor.unit,R.cantor.n+' músicas'],
+      R.unidade&&['🏢','Unidade mais animada',unitOf(R.unidade.unit).nome,null,R.unidade.n+' apresentaç'+(R.unidade.n===1?'ão':'ões')]
+    ].filter(Boolean).map(([i,l,v,u,x])=>`<div class="rs"><div class="ri">${i}</div><div class="rl">${l}</div><div class="rv t disp goldtxt">${esc(v)}</div>${u?chipBig(u):''}${x?`<div class="rx">${esc(x)}</div>`:''}</div>`);
+    scene(`<div class="c-n in">🎞️ RETROSPECTIVA DO KARAOKÊ</div><div class="ind-h disp goldtxt in" style="margin:1vh 0 0">${s.p===1?'A NOITE EM NÚMEROS':'OS DESTAQUES'}</div><div class="rg">${cards.join('')}</div>`);
+    [...document.querySelectorAll('.rs')].forEach((el,i)=>later(700+i*1100,()=>{el.classList.add('show');whoosh();
+      const v=el.querySelector('[data-n]');if(v){const n=+v.dataset.n,t0=performance.now();const f=now=>{const k=Math.min(1,(now-t0)/1200);v.textContent=Math.round(n*(1-Math.pow(1-k,3)));if(k<1&&v.isConnected)requestAnimationFrame(f)};requestAnimationFrame(f)}}));
   }
   else if(s.k==='titulo'){
     scene(`<div class="in"><div class="c-n">CATEGORIA ${s.n+1} DE ${STEPS.nCat}</div><div class="c-em pop">${esc(c.emoji||'🏆')}</div>
@@ -317,9 +341,13 @@ function show(){
 const envHtml=(c,cls)=>`<div class="env ${cls}"><div class="back"></div><div class="card"><b>${esc((c.emoji||'')+' '+c.nome)}</b></div><div class="front"></div><div class="flap"></div><div class="seal">PJ</div></div>`;
 
 /* ===================== roteiro para o admin ===================== */
+const NL=String.fromCharCode(10);
 function scriptOf(s){
   if(!s)return'';const c=s.c;
   if(s.k==='abertura')return `Boa noite, ${C.MARCA}! 🎉\nSejam muito bem-vindos ao ${O.titulo}!\nHoje a gente premia quem faz a casa acontecer todo dia. Votos contados, envelopes lacrados... preparados?`;
+  if(s.k==='retro'){const R=O.retro(PERF);return s.p===1?`Antes das estatuetas, um replay do karaokê!
+Hoje foram ${R.total} músicas, ${R.cantores} cantores e ${R.duetos} duetos, com nota média ${R.media}. 👏`
+    :['E os destaques da noite:',R.primeira&&`• Quem abriu a noite: ${R.primeira.name}${R.primeira.song?' com "'+R.primeira.song+'"':''}`,R.musica&&`• Música mais cantada: "${R.musica.song}" (${R.musica.n}x)`,R.cantor&&`• Dono(a) do microfone: ${R.cantor.name} (${R.cantor.n} músicas)`,R.unidade&&`• Unidade mais animada: ${unitOf(R.unidade.unit).nome}`].filter(Boolean).join(NL)}
   if(s.k==='titulo')return (c.roteiro||`Próxima categoria: ${c.nome}! ${c.descricao||''}`);
   if(s.k==='indicados'){const fs=resultOf(c).finalists;return `Os indicados são:\n${fs.map(f=>'• '+f.name+' ('+unitOf(f.unit).nome+')'+(f.sub?' — '+f.sub:'')).join('\n')}`}
   if(s.k==='envelope')return 'O envelope, por favor! 🥁\n(segura o suspense... deixa o tambor rolar)';

@@ -32,7 +32,7 @@
     ['voz-do-ano', 11, '🎤', 'Voz do Ano', 'A maior nota do karaokê da noite', 'voz_karaoke', 'Essa ninguém votou: quem decidiu foi a máquina do karaokê. As maiores notas da noite foram...'],
     ['unidade-do-ano', 12, '🏢', 'Unidade do Ano', 'Vitórias no Oscar + placar do karaokê', 'unidade', 'Chegou a hora da grande final! Somando as estatuetas de hoje com o placar do karaokê...']
   ].map(([id, ordem, emoji, nome, descricao, tipo, roteiro]) => ({ id, ordem, emoji, nome, descricao, tipo, roteiro, ativa: true }));
-  const CFG0 = { id: 'main', fase: 'indicacao', top_n: 4, peso_oscar: 0.5, peso_karaoke: 0.5, discurso_seg: 30, resultado: {} };
+  const CFG0 = { id: 'main', fase: 'indicacao', top_n: 4, peso_oscar: 0.5, peso_karaoke: 0.5, discurso_seg: 30, resultado: {}, fecha_em: null, retro: true };
 
   /* ---------- modo local: mesmas regras das funções do banco ---------- */
   if (store.mode !== 'supabase') {
@@ -55,7 +55,7 @@
         if (await fase() !== 'votacao') return 'fechado';
         if (!(await store.list('oscar_finalists')).some(f => f.id === a.p_finalista && f.category_id === a.p_categoria)) return 'finalista';
         if ((await store.list('oscar_votes')).some(v => v.device_id === a.p_device && v.category_id === a.p_categoria)) return 'ja_votou';
-        await store.insert('oscar_votes', { device_id: a.p_device, category_id: a.p_categoria, finalist_id: a.p_finalista, voter_unit: a.p_unit });
+        await store.insert('oscar_votes', { device_id: a.p_device, category_id: a.p_categoria, finalist_id: a.p_finalista, voter_unit: a.p_unit, voter_name: a.p_name || null });
         return 'ok';
       },
       async oscar_nomes() {
@@ -137,13 +137,64 @@
     return { path, url: await store.uploadFile(path, blob) };
   }
 
+  /* ---------- voto (manda o nome junto; se o banco ainda não tem a coluna nova, vota do jeito antigo) ---------- */
+  async function votar(a) {
+    try { return await store.rpc('oscar_votar', a); }
+    catch (e) {
+      if (/PGRST202|could not find the function|function .* does not exist/i.test((e && (e.code + ' ' + e.message)) || '')) { const { p_name, ...old } = a; return await store.rpc('oscar_votar', old); }
+      throw e;
+    }
+  }
+
+  /* ---------- "fecha em X minutos" ---------- */
+  const secsLeft = cfg => (cfg && cfg.fecha_em) ? Math.ceil((Date.parse(cfg.fecha_em) - Date.now()) / 1000) : null;
+  const fmtLeft = s => s == null ? '' : (s <= 0 ? '0:00' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'));
+
+  /* ---------- mesma pessoa em vários celulares (aba anônima, outro navegador...) ----------
+     Agrupa por nome+unidade de quem indicou/votou. Em cada categoria vale só a 1ª linha da pessoa;
+     as outras ficam em "extras" (o admin decide se apaga). */
+  function suspeitos(noms, votes) {
+    const P = new Map();
+    const add = (r, kind) => {
+      if (!r.voter_name) return; const k = key(r.voter_name) + '|' + (r.voter_unit || '');
+      if (!P.has(k)) P.set(k, { name: r.voter_name, unit: r.voter_unit, devs: new Set(), rows: [] });
+      const g = P.get(k); g.devs.add(r.device_id); g.rows.push({ ...r, kind });
+    };
+    noms.forEach(r => add(r, 'nom')); votes.forEach(r => add(r, 'vote'));
+    const out = [];
+    P.forEach(g => {
+      if (g.devs.size < 2) return;
+      const seen = new Set(), extras = [];
+      g.rows.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+        .forEach(r => { const k = r.kind + '|' + r.category_id; if (seen.has(k)) extras.push(r); else seen.add(k); });
+      out.push({ name: g.name, unit: g.unit, devices: g.devs.size, noms: g.rows.filter(r => r.kind === 'nom').length, votes: g.rows.filter(r => r.kind === 'vote').length, extras });
+    });
+    return out.sort((a, b) => b.extras.length - a.extras.length || b.devices - a.devices);
+  }
+
+  /* ---------- retrospectiva da noite (karaokê) ---------- */
+  function retro(perfs) {
+    const ps = perfs.filter(p => p.final != null);
+    const cnt = (arr, f) => { const m = new Map(); arr.forEach(x => { const k = f(x); if (!k) return; const e = m.get(k.key) || { ...k, n: 0 }; e.n++; m.set(k.key, e); }); return [...m.values()].sort((a, b) => b.n - a.n); };
+    const singers = cnt(ps, p => ({ key: key(p.name) + '|' + p.unit, name: p.name, unit: p.unit }));
+    const songs = cnt(ps, p => p.song_title ? { key: key(p.song_title), song: p.song_title } : null);
+    const units = cnt(ps, p => ({ key: p.unit, unit: p.unit }));
+    const first = [...ps].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0] || null;
+    return {
+      total: ps.length, cantores: singers.length, duetos: ps.filter(p => p.mode === 'dueto' || p.mode === 'batalha').length,
+      media: ps.length ? Math.round(ps.reduce((a, p) => a + p.final, 0) / ps.length) : 0,
+      musica: songs[0] && songs[0].n > 1 ? songs[0] : null, cantor: singers[0] && singers[0].n > 1 ? singers[0] : null,
+      unidade: units[0] || null, primeira: first ? { name: first.name, unit: first.unit, song: first.song_title } : null
+    };
+  }
+
   const FASES = { indicacao: '📝 Indicação', votacao: '🗳️ Votação', cerimonia: '🎬 Cerimônia', encerrado: '🏁 Encerrado' };
   const TABLES = ['oscar_config', 'oscar_categorias', 'oscar_nominations', 'oscar_finalists', 'oscar_votes', 'oscar_photos'];
 
   window.OSCAR = {
     C, OC, store, UNITS, esc, key, cleanName, unitOf, chip, initials, avatar, CATS, CFG0, FASES, TABLES,
     titulo: OC.TITULO || 'OSCAR POBRE JUAN', ensureSeed, getConfig, getCats, sortCats,
-    winnersOf, vozDoAno, unidadeDoAno, winsByUnit, shrink, uploadPhoto,
+    winnersOf, vozDoAno, unidadeDoAno, winsByUnit, shrink, uploadPhoto, votar, secsLeft, fmtLeft, suspeitos, retro,
     link: page => { const base = (C.LINK_CELULAR || '').replace(/[^/]*$/, ''); return base ? base + page : new URL(page, location.href).href; }
   };
 })();

@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611160200"></script>
-<script src="oscar-core.js?v=202611160200"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="oscar-core.js?v=202611170100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#d9b46a;--gold2:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -36,6 +36,11 @@ small,.dim{color:var(--dim);font-size:13px}
 .units button.sel{color:var(--ink)}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
 .phase{margin:8px 16px 0;padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--gold2);font-weight:700;font-size:15px}
+.cdw{display:flex;align-items:center;gap:12px;border-color:var(--gold);background:linear-gradient(90deg,#2a1f0e,var(--panel))}
+.cdw b{font-family:"Bebas Neue",Impact,sans-serif;font-size:34px;font-weight:400;color:var(--gold);line-height:1;min-width:76px;text-align:center}
+.cdw.low{border-color:var(--acc2);background:linear-gradient(90deg,#3a0f12,var(--panel));animation:cdp 1s infinite}
+.cdw.low b{color:#ff6b6b}
+@keyframes cdp{50%{box-shadow:0 0 0 4px rgba(196,29,44,.35)}}
 .prog{margin:14px 0 4px}
 .prog .bar{height:12px;background:var(--field);border-radius:6px;overflow:hidden;margin-top:6px}
 .prog .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));border-radius:6px;transition:width .4s}
@@ -79,6 +84,7 @@ nav button.on{color:var(--gold);font-weight:800}
 <body>
 <header><div id="brand"></div><div class="ttl" id="ttl"></div></header>
 <div class="phase hidden" id="phase"></div>
+<div class="phase cdw hidden" id="cdBar"></div>
 
 <section id="reg" class="wrap hidden">
   <h3>Bem-vindo ao Oscar! 🏆</h3>
@@ -169,7 +175,7 @@ function render(){
   $('#phase').textContent={indicacao:'📝 Fase de indicação: indique um colega em cada categoria (dá para trocar até fechar).',votacao:'🗳️ Votação aberta! Escolha 1 finalista por categoria. Votou, votou 😉',cerimonia:'🎬 A cerimônia está rolando no telão! 🍿',encerrado:'🏁 O Oscar acabou. Obrigado por participar!'}[f]||'';
   if(f==='indicacao'){if(!editing)renderIndicacao()}
   else{editing=null;if(f==='votacao')renderVotacao();else renderResultados()}
-  renderFotos();
+  renderFotos();tickCd();
 }
 
 function renderIndicacao(){
@@ -234,7 +240,7 @@ async function vote(cid,fid){
   const c=CATS.find(x=>x.id===cid),f=FIN.find(x=>x.id===fid);if(!c||!f)return;
   if(!await kDialog({title:c.nome,msg:`Votar em ${f.name}?\n\nVotou, votou: depois não dá para trocar.`,icon:c.emoji||'🏆',ok:'Votar',cancel:'Voltar'}))return;
   try{
-    const r=await store.rpc('oscar_votar',{p_device:dev,p_categoria:cid,p_finalista:fid,p_unit:me.unit});
+    const r=await O.votar({p_device:dev,p_categoria:cid,p_finalista:fid,p_unit:me.unit,p_name:me.name});
     if(r==='ok'){MYVOTE[cid]={id:fid,name:f.name};LS('o_vote',MYVOTE);toast('Voto registrado ✅')}
     else if(r==='ja_votou'){SRVVOTED.add(cid);toast('Você já tinha votado nesta categoria 😉')}
     else if(r==='fechado'){toast('A votação fechou 🙈');refresh();return}
@@ -242,6 +248,27 @@ async function vote(cid,fid){
   }catch(e){console.error(e);toast('Sem conexão. Tente de novo.')}
   renderVotacao();
 }
+
+/* ---------- "fecha em X minutos": contagem + vibração ---------- */
+function falta(){
+  if(CFG.fase==='indicacao'){const cs=votaveis();return cs.filter(c=>!MYNOM[c.id]).length}
+  if(CFG.fase==='votacao'){const cs=votaveis().filter(c=>FIN.some(f=>f.category_id===c.id));return cs.filter(c=>!(MYVOTE[c.id]||SRVVOTED.has(c.id))).length}
+  return 0;
+}
+function tickCd(){
+  const bar=$('#cdBar');if(!bar)return;
+  const on=me&&(CFG.fase==='indicacao'||CFG.fase==='votacao')&&CFG.fecha_em,left=on?O.secsLeft(CFG):null;
+  if(!on||left<-600){bar.classList.add('hidden');return}
+  bar.classList.remove('hidden');bar.classList.toggle('low',left<=60);
+  const oq=CFG.fase==='indicacao'?'A indicação':'A votação',f=falta();
+  bar.innerHTML=left>0?`<b>${O.fmtLeft(left)}</b><div>⏰ ${oq} fecha logo!<br><small>${f?`Falta${f===1?'':'m'} ${f} categoria${f===1?'':'s'} para você 👇`:'Você já fez tudo ✅'}</small></div>`
+    :`<b>⏰</b><div>Tempo esgotado!<br><small>${oq} está fechando agora.</small></div>`;
+  // vibra quando o admin liga a contagem e no último minuto (1 vez cada)
+  const seen=localStorage.getItem('o_cd')||'';
+  if(left>60&&seen!==CFG.fecha_em){localStorage.setItem('o_cd',CFG.fecha_em);if(f)navigator.vibrate&&navigator.vibrate([200,100,200])}
+  else if(left<=60&&left>0&&seen!==CFG.fecha_em+'|1'){localStorage.setItem('o_cd',CFG.fecha_em+'|1');if(f)navigator.vibrate&&navigator.vibrate([300,100,300,100,300])}
+}
+setInterval(tickCd,1000);
 
 function renderResultados(){
   const R=CFG.resultado||{},cs=CATS.filter(c=>R[c.id]);

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checagem pré-festa</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
+<script src="oscar-core.js?v=202611170100"></script>
+<style>
+:root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--gold:#d9b46a;--ok:#4cc38a;--warn:#e8b04a;--bad:#e5484d}
+html{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 500px at 80% -10%,#3a2c12,var(--bg));color:var(--txt);font-family:Montserrat,system-ui,sans-serif;min-height:100vh}
+.wrap{max-width:860px;margin:0 auto;padding:22px 16px 60px}
+h1{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:44px;letter-spacing:1px;margin:0;color:var(--gold)}
+.sub{color:var(--dim);margin:4px 0 16px}
+.sum{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.pill{padding:8px 14px;border-radius:999px;font-weight:800;background:var(--panel2);border:1px solid var(--line)}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font:inherit;font-size:14px;cursor:pointer}
+button.pri{background:var(--gold);border-color:var(--gold);color:#0f0806;font-weight:800}
+h2{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:26px;letter-spacing:1px;color:var(--gold);margin:22px 0 8px}
+.it{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0}
+.it .ic{font-size:22px;line-height:1.1;width:26px;text-align:center;flex:none}
+.it .tx{flex:1}
+.it b{display:block}
+.it small{color:var(--dim);display:block;margin-top:3px;line-height:1.45;white-space:pre-line}
+.it.ok{border-left:5px solid var(--ok)}.it.warn{border-left:5px solid var(--warn)}.it.bad{border-left:5px solid var(--bad)}.it.run{border-left:5px solid var(--line)}
+.it .act{flex:none;display:flex;gap:6px;flex-wrap:wrap}
+.meter{height:12px;background:#0e0b0a;border-radius:6px;overflow:hidden;margin-top:8px;width:100%;max-width:340px}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--warn),var(--bad));transition:width .08s}
+a{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>✅ Checagem pré-festa</h1>
+  <div class="sub">Abra no notebook do telão, umas 2 horas antes. Verde = pronto · amarelo = conferir · vermelho = resolver.</div>
+  <div class="sum" id="sum"></div>
+  <div id="list"></div>
+  <p class="sub" style="margin-top:24px">Dica: depois de resolver algo, clique em <b>🔄 Checar de novo</b>.</p>
+</div>
+<script>
+const C=window.KARAOKE_CONFIG,store=window.KStore,O=window.OSCAR,$=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const unitOf=id=>C.UNIDADES.find(u=>u.id===id)||{nome:id};
+const R=[];// {sec,id,st,title,msg,act}
+function put(sec,id,st,title,msg='',act=''){const i=R.findIndex(x=>x.id===id),r={sec,id,st,title,msg,act};if(i<0)R.push(r);else R[i]=r;draw()}
+const ICON={ok:'✅',warn:'⚠️',bad:'❌',run:'⏳'};
+function draw(){
+  const secs=[...new Set(R.map(r=>r.sec))];
+  $('#list').innerHTML=secs.map(s=>`<h2>${esc(s)}</h2>`+R.filter(r=>r.sec===s).map(r=>`<div class="it ${r.st}" id="it-${r.id}"><div class="ic">${ICON[r.st]}</div><div class="tx"><b>${esc(r.title)}</b>${r.msg?`<small>${r.msg}</small>`:''}</div>${r.act?`<div class="act">${r.act}</div>`:''}</div>`).join('')).join('');
+  const n=k=>R.filter(r=>r.st===k).length;
+  $('#sum').innerHTML=`<span class="pill ok">✅ ${n('ok')}</span><span class="pill warn">⚠️ ${n('warn')}</span><span class="pill bad">❌ ${n('bad')}</span>${n('run')?`<span class="pill">⏳ ${n('run')}</span>`:''}<span style="flex:1"></span><button class="pri" onclick="runAll()">🔄 Checar de novo</button>`;
+  if(MET)requestAnimationFrame(()=>{const m=$('#it-mic .meter i');if(m)m.style.width=MET.v+'%'});
+}
+const T=(p,ms=8000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('demorou demais')),ms))]);
+const anonFetch=(path,opt={})=>fetch(C.SUPABASE_URL.replace(/\/+$/,'')+path,{...opt,headers:{apikey:C.SUPABASE_ANON_KEY,Authorization:'Bearer '+C.SUPABASE_ANON_KEY,'Content-Type':'application/json',...(opt.headers||{})}});
+
+/* ---------- 1. internet e servidor ---------- */
+async function checkNet(){
+  const S='🌐 Internet e servidor';
+  put(S,'net','run','Internet');
+  if(!navigator.onLine){put(S,'net','bad','Sem internet','O notebook está offline. Conecte no Wi-Fi/cabo (4G do celular de reserva).');return false}
+  const t0=performance.now();
+  try{const r=await T(anonFetch('/rest/v1/karaoke_stage?select=id&limit=1'));const ms=Math.round(performance.now()-t0);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    put(S,'net',ms<800?'ok':'warn','Internet e Supabase respondendo',`Tempo de resposta: ${ms} ms${ms>=800?' (lento: confira o Wi-Fi do notebook)':''}`);
+  }catch(e){put(S,'net','bad','Supabase não respondeu','Detalhe: '+esc(e.message)+'\nConfira a internet do notebook. Se o Supabase estiver fora, o karaokê ainda toca, mas a fila/votação pelo celular param.');return false}
+  put(S,'mode',store.mode==='supabase'?'ok':'bad',store.mode==='supabase'?'Páginas ligadas no Supabase':'Páginas em MODO LOCAL',store.mode==='supabase'?'':'O SUPABASE_URL/KEY do karaoke-store.js não carregou. Recarregue a página (Ctrl+F5).');
+  // tempo real
+  put(S,'rt','run','Tempo real (celular → telão)');
+  try{
+    const ok=await T(new Promise((res,rej)=>{const ch=store.sb.channel('checagem-'+Date.now(),{config:{broadcast:{self:true}}});
+      ch.on('broadcast',{event:'ping'},()=>{res(true);store.sb.removeChannel(ch)});
+      ch.subscribe(s=>{if(s==='SUBSCRIBED')ch.send({type:'broadcast',event:'ping',payload:{}});else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT')rej(new Error(s))})}),10000);
+    put(S,'rt','ok','Tempo real funcionando','Fila, votos e placar chegam na hora.');
+  }catch(e){put(S,'rt','bad','Tempo real não conectou','Detalhe: '+esc(e.message)+'\nAlgumas redes (Wi-Fi corporativo/hotel) bloqueiam. Teste no 4G do celular (roteador).')}
+  // relógio (a contagem do Oscar e a votação dependem da hora certa)
+  try{const r=await anonFetch('/rest/v1/karaoke_stage?select=id&limit=1');const d=Date.parse(r.headers.get('date'));const diff=Math.round((Date.now()-d)/1000);
+    put(S,'clock',Math.abs(diff)<=5?'ok':'warn','Relógio do notebook',Math.abs(diff)<=5?'Hora certa.':`O relógio está ${Math.abs(diff)} s ${diff>0?'adiantado':'atrasado'}. Windows: Configurações → Hora e idioma → "Sincronizar agora".`)}catch(e){}
+  return true;
+}
+
+/* ---------- 2. segurança ---------- */
+async function checkSec(){
+  const S='🔒 Senha e trava';
+  const adm=await store.isAdmin();
+  put(S,'login',adm?'ok':'bad',adm?'Telão logado com a senha':'Telão NÃO está logado',adm?'Este navegador pode controlar o telão, o admin e a cerimônia.':'Abra o karaoke.html neste navegador e digite a senha do telão quando pedir. Sem isso o telão não consegue mudar a fila.','<a href="karaoke.html" target="_blank"><button>Abrir telão</button></a>');
+  // trava: um celular sem senha não pode mexer no palco
+  try{const r=await anonFetch('/rest/v1/karaoke_stage',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:'checagem-trava',status:'x'})});
+    put(S,'trava',r.ok?'bad':'ok',r.ok?'Trava DESLIGADA':'Trava ligada',r.ok?'Qualquer celular consegue mexer no palco. Rode o trava.sql no Supabase.':'Celulares sem senha só entram na fila, votam e mandam fotos.')}
+  catch(e){put(S,'trava','warn','Não deu para testar a trava',esc(e.message))}
+}
+
+/* ---------- 3. noite do karaokê ---------- */
+async function checkNight(){
+  const S='🎤 Karaokê';
+  try{
+    const [perf,queue,votes,cat,stage]=await Promise.all(['performances','queue','votes','catalog','stage'].map(t=>store.list(t)));
+    const w=queue.filter(q=>q.status==='waiting'),sing=queue.filter(q=>q.status==='singing');
+    const dirty=perf.length||w.length||sing.length||votes.length;
+    put(S,'night',dirty?'warn':'ok',dirty?'Ainda tem dados de ensaio':'Noite zerada',dirty?`${perf.length} apresentação(ões), ${w.length} na fila, ${votes.length} voto(s)${perf.length?' · ex.: '+perf.slice(0,3).map(p=>esc(p.name)).join(', '):''}.\nNo telão: barra lateral → <b>Zerar noite</b> (antes da festa começar). Obs.: a Voz do Ano do Oscar usa essas notas.`:'Placar e fila vazios, prontos para a festa.');
+    put(S,'cat',cat.length?'ok':'warn',cat.length?`${cat.length} músicas no catálogo dos celulares`:'Catálogo vazio',cat.length?'':'No telão, escolha a pasta de músicas (ou conecte o Spotify): o catálogo dos celulares é montado a partir dela.');
+    const pz=stage.find(x=>x.id==='pause');put(S,'pause',pz&&pz.status==='on'?'warn':'ok',pz&&pz.status==='on'?'Festa está PAUSADA':'Festa não está pausada',pz&&pz.status==='on'?'Os celulares estão vendo "intervalo". No telão aperte P para voltar.':'');
+  }catch(e){put(S,'night','bad','Não deu para ler o karaokê',esc(e.message))}
+  put(S,'link',C.LINK_CELULAR?'ok':'warn',C.LINK_CELULAR?'QR Code do karaokê configurado':'LINK_CELULAR vazio',C.LINK_CELULAR?esc(C.LINK_CELULAR):'O QR do telão usa o endereço da página. Melhor preencher LINK_CELULAR no karaoke-store.js.');
+  let S2={};try{S2=JSON.parse(localStorage.getItem('karaoke')||'{}')}catch(e){}
+  const cal=(S2.leakFloor||[]).some(x=>x!=null);
+  put(S,'cal',cal?'ok':'warn',cal?'Microfones calibrados neste notebook':'Microfones ainda não calibrados',cal?'':'No telão: ligue os mics, toque uma música e clique em 🎯 Calibrar (com o salão em silêncio).');
+}
+
+/* ---------- 4. som ---------- */
+let MET=null;
+async function checkAudio(){
+  const S='🔊 Som';
+  try{
+    const ds=await navigator.mediaDevices.enumerateDevices(),ins=ds.filter(d=>d.kind==='audioinput'),outs=ds.filter(d=>d.kind==='audiooutput');
+    const named=ins.some(d=>d.label);
+    let S2={};try{S2=JSON.parse(localStorage.getItem('karaoke')||'{}')}catch(e){}
+    const m1=S2.mic1?ins.find(d=>d.deviceId===S2.mic1):null;
+    put(S,'mic',ins.length?(named&&S2.mic1&&!m1?'warn':'ok'):'bad',ins.length?`${ins.length} entrada(s) de microfone`:'Nenhum microfone encontrado',
+      (!ins.length?'Ligue a interface USB / receptora no notebook.':named?ins.map(d=>'• '+esc(d.label)).join('\n')+(S2.mic1&&!m1?'\n⚠️ O Mic 1 escolhido no telão não está conectado agora.':''):'Clique em "Testar microfone" para ver os nomes e o nível.')+(MET?'<div class="meter"><i></i></div>':''),
+      `<button onclick="micTest()">${MET?'⏹️ Parar teste':'🎙️ Testar microfone'}</button>`);
+    put(S,'out',outs.length||!('setSinkId' in HTMLMediaElement.prototype)?'ok':'warn','Saída de som',(outs.length?outs.filter(d=>d.label).map(d=>'• '+esc(d.label)).join('\n'):'')+'\nToque o bipe e confira se sai na caixa de som (e não no alto-falante do notebook).','<button onclick="beep()">🔔 Tocar bipe</button>');
+  }catch(e){put(S,'mic','warn','Não deu para listar o som',esc(e.message))}
+  try{if(navigator.getBattery){const b=await navigator.getBattery();put(S,'bat',b.charging?'ok':(b.level<0.6?'bad':'warn'),b.charging?'Notebook na tomada':'Notebook NA BATERIA',b.charging?`Bateria ${Math.round(b.level*100)}%`:`Bateria ${Math.round(b.level*100)}%. Ligue o carregador: a festa dura horas.`)}}catch(e){}
+}
+async function micTest(){
+  if(MET){MET.stop();MET=null;checkAudio();return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    const ac=new AudioContext(),an=ac.createAnalyser();an.fftSize=1024;ac.createMediaStreamSource(st).connect(an);const buf=new Float32Array(an.fftSize);
+    MET={v:0,stop(){clearInterval(this.t);st.getTracks().forEach(t=>t.stop());ac.close()}};
+    MET.t=setInterval(()=>{an.getFloatTimeDomainData(buf);let s=0;for(const x of buf)s+=x*x;const db=20*Math.log10(Math.sqrt(s/buf.length)+1e-9);MET.v=Math.max(0,Math.min(100,(db+60)*1.7));const m=$('#it-mic .meter i');if(m)m.style.width=MET.v+'%'},60);
+    await checkAudio();
+  }catch(e){put('🔊 Som','mic','bad','O Chrome não liberou o microfone',esc(e.message)+'\nClique no cadeado da barra de endereço → Microfone → Permitir.')}
+}
+function beep(){const ac=new AudioContext(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,ac.currentTime);g.gain.exponentialRampToValueAtTime(.3,ac.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.6);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.65);setTimeout(()=>ac.close(),900)}
+
+/* ---------- 5. Oscar ---------- */
+async function checkOscar(){
+  const S='🏆 Oscar';
+  let cfg,cats,fin,ph,nom=[],votes=[];
+  try{cfg=await O.getConfig();cats=(await O.getCats()).filter(c=>c.ativa);fin=await store.list('oscar_finalists');ph=await store.list('oscar_photos')}
+  catch(e){put(S,'osc','bad','Tabelas do Oscar não encontradas','Rode o oscar.sql no Supabase. Detalhe: '+esc(e.message));return}
+  const raw=(await store.list('oscar_config')).find(x=>x.id==='main')||{};
+  put(S,'sql','fecha_em' in raw?'ok':'warn','fecha_em' in raw?'Banco do Oscar atualizado':'Banco do Oscar desatualizado','fecha_em' in raw?'':'Rode o oscar.sql de novo no Supabase (não apaga nada): libera a contagem "fecha em X min", a retrospectiva e a detecção de voto repetido.');
+  const vot=cats.filter(c=>c.tipo==='voto'),sem=vot.filter(c=>!fin.some(f=>f.category_id===c.id));
+  try{if(await store.isAdmin()){nom=await store.list('oscar_nominations');votes=await store.list('oscar_votes')}}catch(e){}
+  const devs=new Set(nom.map(n=>n.device_id)).size,vdevs=new Set(votes.map(n=>n.device_id)).size;
+  const F={indicacao:['ok',`Fase: Indicação · ${devs} celular(es) já indicaram`,'Antes da votação: escolha os finalistas no admin (aba Finalistas).'],
+    votacao:[sem.length?'warn':'ok',`Fase: Votação · ${vdevs} celular(es) já votaram`,sem.length?`${sem.length} categoria(s) sem finalistas (não aparecem): ${sem.map(c=>esc(c.nome)).join(', ')}`:'Todas as categorias têm finalistas.'],
+    cerimonia:['ok','Fase: Cerimônia','Abra o telão da cerimônia (oscar-telao.html).'],encerrado:['ok','Fase: Encerrado','Os celulares mostram os vencedores.']}[cfg.fase]||['warn','Fase: '+esc(cfg.fase),''];
+  put(S,'fase',F[0],F[1],F[2],'<a href="oscar-admin.html" target="_blank"><button>Abrir admin</button></a>');
+  const pend=ph.filter(p=>p.status==='pending').length;
+  put(S,'fotos',pend?'warn':'ok',pend?`${pend} foto(s) esperando aprovação`:`Fotos: ${ph.filter(p=>p.status==='approved').length} aprovada(s)`,pend?'Aprove no admin → aba Fotos para passarem no telão.':'');
+  if(votes.length||nom.length){const s=O.suspeitos(nom,votes).filter(g=>g.extras.length);put(S,'susp',s.length?'warn':'ok',s.length?`${s.length} pessoa(s) em vários celulares`:'Sem voto repetido',s.length?s.slice(0,5).map(g=>`• ${esc(g.name)} (${esc(unitOf(g.unit).nome)}): ${g.devices} celulares`).join('\n')+'\nConfira no admin → Painel → "Mesma pessoa em vários celulares".':'')}
+  const pt=(+cfg.peso_oscar||0)+(+cfg.peso_karaoke||0);put(S,'peso',pt>0?'ok':'bad','Unidade do Ano: pesos',pt>0?`Oscar ${cfg.peso_oscar} · karaokê ${cfg.peso_karaoke}`:'Os dois pesos estão em 0: o pódio fica todo zerado.');
+}
+
+async function runAll(){
+  R.length=0;draw();
+  const ok=await checkNet();
+  if(ok&&store.mode==='supabase'){await checkSec();await checkNight();await checkOscar()}
+  await checkAudio();
+}
+runAll();
+</script>
+</body>
+</html>

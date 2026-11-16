@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611160200"></script>
+<script src="karaoke-store.js?v=202611170100"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -40,6 +40,11 @@ small,.dim{color:var(--dim);font-size:13px}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
 #pauseBar{display:none;margin:6px 16px 0;padding:14px 16px;border-radius:14px;background:var(--panel2);border:1px solid var(--acc2);font-weight:800;font-size:17px}
 #pauseBar.on{display:block}
+#oscBtn{display:flex;align-items:center;gap:12px;margin:8px 16px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(90deg,#3a2c12,#1d1610);border:1px solid #d9b46a;color:#f6f1ec;text-decoration:none;font-weight:800;font-size:15px}
+#oscBtn .oi{font-size:28px;line-height:1}
+#oscBtn small{display:block;font-weight:600;color:#e3bf6f;font-size:13px;margin-top:2px}
+#oscBtn .go{margin-left:auto;font-size:22px;color:#e3bf6f}
+#oscBtn.low{border-color:#c41d2c;background:linear-gradient(90deg,#3a0f12,#1d1610)}
 #notice{margin:6px 16px 0;border-radius:14px;padding:0;font-weight:800;font-size:17px;transition:all .3s}
 #notice.on{padding:14px 16px;background:var(--panel2);border:1px solid var(--acc)}
 #notice.hot{background:var(--acc);color:var(--ink);animation:pulse 1s infinite alternate}
@@ -103,6 +108,7 @@ nav button.on{color:var(--acc);font-weight:800}
 <body>
 <header><div id="brand"></div><div class="ev" id="ev"></div></header>
 <div id="pauseBar">⏸️ Intervalo: já voltamos! Sua vez na fila continua guardada.</div>
+<a id="oscBtn" class="hidden" href="oscar.html"></a>
 <div id="notice"></div>
 
 <section id="reg" class="wrap hidden">
@@ -247,7 +253,27 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
 });
 const goTab=t=>document.querySelector(`nav button[data-tab="${t}"]`).click();
 
-function render(){$('#pauseBar').classList.toggle('on',PAUSED);renderSongs();renderFila();renderPlacar();renderNotice();renderVote()}
+/* ---------- atalho para o Oscar (enquanto indicação/votação estão abertas, e depois para ver os vencedores) ---------- */
+let OSCF=null,OSCOFF=false;
+async function oscLoad(){
+  if(OSCOFF)return;
+  try{OSCF=(await store.list('oscar_config')).find(x=>x.id==='main')||null}
+  catch(e){OSCF=null;if(/42P01|does not exist|schema cache|404/.test((e&&(e.code+' '+e.message))||''))OSCOFF=true}
+  renderOsc();
+}
+function renderOsc(){
+  const b=$('#oscBtn'),f=OSCF&&OSCF.fase;if(!b)return;
+  const txt={indicacao:['📝 Indique os colegas no Oscar!','1 toque por categoria · leva 1 minuto'],votacao:['🗳️ A votação do Oscar está aberta!','Escolha os vencedores de cada categoria'],cerimonia:['🎬 O Oscar está rolando no telão!','Veja os vencedores no celular'],encerrado:['🏆 Vencedores do Oscar','Veja quem levou cada estatueta']}[f];
+  if(!me||!txt){b.classList.add('hidden');return}
+  const left=OSCF.fecha_em&&(f==='indicacao'||f==='votacao')?Math.ceil((Date.parse(OSCF.fecha_em)-Date.now())/1000):null;
+  const sub=left!=null&&left>0?'⏰ Fecha em '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0'):txt[1];
+  const html=`<span class="oi">🏆</span><div>${esc(txt[0])}<small>${esc(sub)}</small></div><span class="go">›</span>`;
+  b.classList.remove('hidden');b.classList.toggle('low',left!=null&&left>0&&left<=60);if(b.innerHTML!==html)b.innerHTML=html;
+}
+store.on(()=>{clearTimeout(oscLoad.t);oscLoad.t=setTimeout(oscLoad,500)},['oscar_config']);
+setInterval(oscLoad,30000);setInterval(()=>{if(OSCF&&OSCF.fecha_em)renderOsc()},1000);oscLoad();
+
+function render(){$('#pauseBar').classList.toggle('on',PAUSED);renderOsc();renderSongs();renderFila();renderPlacar();renderNotice();renderVote()}
 
 function renderSongs(){
   const q=slug($('#search').value);
