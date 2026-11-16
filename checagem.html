@@ -66,6 +66,7 @@ async function checkNet(){
   const S='🌐 Internet e servidor';
   put(S,'net','run','Internet');
   if(!navigator.onLine){put(S,'net','bad','Sem internet','O notebook está offline. Conecte no Wi-Fi/cabo (4G do celular de reserva).');return false}
+  try{await T(anonFetch('/rest/v1/karaoke_stage?select=id&limit=1'));}catch(e){} // 1º acesso abre a conexão (mais lento)
   const t0=performance.now();
   try{const r=await T(anonFetch('/rest/v1/karaoke_stage?select=id&limit=1'));const ms=Math.round(performance.now()-t0);
     if(!r.ok)throw new Error('HTTP '+r.status);
