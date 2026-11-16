@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0908">
+<title>Oscar</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="karaoke-store.js?v=202611160200"></script>
+<script src="oscar-core.js?v=202611160200"></script>
+<style>
+:root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#d9b46a;--gold2:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
+html{color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;scrollbar-width:none}
+*::-webkit-scrollbar{display:none}
+body{margin:0;background:radial-gradient(700px 420px at 80% -10%,#3a2c12,var(--bg));color:var(--txt);font-family:Montserrat,system-ui,sans-serif;min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.disp{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;letter-spacing:1px;font-weight:400}
+header{padding:18px 16px 6px;display:flex;align-items:center;gap:12px}
+header img{height:40px}
+.ttl{padding-top:.12em;font-family:"Bebas Neue",Impact,sans-serif;font-size:30px;line-height:.95;letter-spacing:1px;background:linear-gradient(180deg,#fff3c9,var(--gold) 45%,#8a6a2c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ttl small{display:block;font-family:Montserrat,sans-serif;font-size:12px;letter-spacing:0;color:var(--dim);-webkit-text-fill-color:var(--dim)}
+.wrap{padding:0 16px}
+.hidden{display:none!important}
+input[type=text]{width:100%;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:14px;font:inherit;font-size:16px}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:13px 16px;font:inherit;font-size:16px;cursor:pointer}
+button.pri{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:800}
+button:disabled{opacity:.45}
+.full{width:100%}
+h3{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-weight:400;font-size:26px;color:var(--gold);margin:18px 0 8px;letter-spacing:1px}
+small,.dim{color:var(--dim);font-size:13px}
+.units{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.units button{padding:15px 6px;font-weight:800}
+.units button.sel{color:var(--ink)}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
+.phase{margin:8px 16px 0;padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--gold2);font-weight:700;font-size:15px}
+.prog{margin:14px 0 4px}
+.prog .bar{height:12px;background:var(--field);border-radius:6px;overflow:hidden;margin-top:6px}
+.prog .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));border-radius:6px;transition:width .4s}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.card.done{border-color:var(--gold2)}
+.card .h{display:flex;gap:10px;align-items:center}
+.card .em{font-size:30px;line-height:1}
+.card .nm{font-weight:800;font-size:17px}
+.card .ds{color:var(--dim);font-size:13px}
+.card .st{margin-top:10px;font-size:14px}
+.card .st b{color:var(--gold)}
+.sug{background:var(--panel2);border:1px solid var(--line);border-radius:12px;margin-top:4px;overflow:hidden}
+.sug button{display:flex;width:100%;text-align:left;border:none;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:12px;font-size:15px;align-items:center;gap:6px}
+.sug button:last-child{border-bottom:none}
+.row2{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:10px}
+.fins{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.fin{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;text-align:center;font-weight:700}
+.fin.mine{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.av{width:64px;height:64px;border-radius:50%;background:var(--c);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--c);flex:none}
+.av span{font-family:"Bebas Neue",Impact,sans-serif;font-size:30px;color:var(--ink)}
+.av img{width:100%;height:100%;object-fit:cover}
+.win{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.win .av{width:48px;height:48px}.win .av span{font-size:22px}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.gal img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(2,1fr);background:rgba(14,11,10,.95);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(6px)}
+nav button{background:none;border:none;color:var(--dim);font-size:13px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button span{font-size:22px}
+nav button.on{color:var(--gold);font-weight:800}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:12px 18px;border-radius:12px;z-index:300;font-size:15px;max-width:90vw}
+.big{font-family:"Bebas Neue",Impact,sans-serif;font-size:44px;color:var(--gold);text-align:center;line-height:1;margin:22px 0 6px}
+.kdlg{position:fixed;inset:0;z-index:200;background:rgba(6,4,3,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px}
+.kbox{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:18px;padding:22px 20px 18px;width:min(440px,100%);text-align:center}
+.kic{font-size:34px;line-height:1;margin-bottom:10px}
+.kt{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-size:28px;letter-spacing:1px;color:var(--gold);margin-bottom:6px}
+.km{font-size:15px;line-height:1.5;white-space:pre-line}
+.kb{display:flex;gap:10px;justify-content:center;margin-top:20px}
+.kb button{flex:1;max-width:210px;font-weight:700}
+</style>
+</head>
+<body>
+<header><div id="brand"></div><div class="ttl" id="ttl"></div></header>
+<div class="phase hidden" id="phase"></div>
+
+<section id="reg" class="wrap hidden">
+  <h3>Bem-vindo ao Oscar! 🏆</h3>
+  <small>Seu nome e sua unidade (é o mesmo cadastro do karaokê).</small>
+  <div style="margin-top:10px"><input id="rName" type="text" maxlength="24" placeholder="Seu nome ou apelido" autocomplete="nickname"></div>
+  <h3>Sua unidade</h3>
+  <div class="units" id="rUnits"></div>
+  <button class="pri full" id="rGo" style="margin-top:8px">Entrar</button>
+</section>
+
+<section id="app" class="hidden">
+  <div id="tab-oscar" class="wrap"><div id="main"></div></div>
+  <div id="tab-fotos" class="wrap hidden">
+    <h3>📸 Tapete vermelho</h3>
+    <small>Mande fotos da festa! Depois de aprovadas, elas passam no telão.</small>
+    <input type="file" id="pFile" accept="image/*" multiple class="hidden">
+    <button class="pri full" id="pBtn" style="margin-top:12px">📷 Mandar foto</button>
+    <div id="pMsg" class="dim" style="margin-top:8px"></div>
+    <div class="gal" id="gal"></div>
+  </div>
+  <p class="dim wrap" style="margin-top:24px">Você: <b id="meName"></b> <span id="meUnit"></span> · <a href="#" id="changeMe" style="color:var(--gold)">trocar</a></p>
+  <nav>
+    <button data-tab="oscar" class="on"><span>🏆</span>Oscar</button>
+    <button data-tab="fotos"><span>📸</span>Tapete vermelho</button>
+  </nav>
+</section>
+
+<script>
+const $=s=>document.querySelector(s);
+const O=window.OSCAR,{C,store,UNITS,esc,key,cleanName,unitOf,chip,avatar}=O,dev=store.deviceId();
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null}){return new Promise(res=>{
+  const ov=document.createElement('div');ov.className='kdlg';
+  ov.innerHTML=`<div class="kbox" role="dialog" aria-modal="true"><div class="kic">${icon}</div>${title?`<div class="kt">${esc(title)}</div>`:''}<div class="km">${esc(msg)}</div><div class="kb">${cancel?`<button data-v="0">${esc(cancel)}</button>`:''}<button class="pri" data-v="1">${esc(ok)}</button></div></div>`;
+  ov.onclick=e=>{const b=e.target.closest('button');if(b){ov.remove();res(b.dataset.v==='1')}else if(e.target===ov&&cancel){ov.remove();res(false)}};
+  document.body.appendChild(ov)})}
+
+document.title=O.titulo;
+$('#brand').innerHTML=C.LOGO_URL?`<img src="${esc(C.LOGO_URL)}" alt="${esc(C.MARCA)}">`:'';
+$('#ttl').innerHTML=esc(O.titulo)+'<small>'+esc(C.EVENTO)+'</small>';
+
+/* ---------- cadastro (o mesmo do karaokê) ---------- */
+let me=null;try{me=JSON.parse(localStorage.getItem('k_me')||'null')}catch(e){}
+function unitButtons(el,sel,onPick){
+  el.innerHTML=UNITS.map(u=>`<button data-u="${esc(u.id)}" class="${u.id===sel?'sel':''}" style="${u.id===sel?'background:'+u.cor+';border-color:'+u.cor:''}">${esc(u.nome)}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;onPick(b.dataset.u);unitButtons(el,b.dataset.u,onPick)};
+}
+let regUnit=me?.unit||null;
+function showReg(){$('#reg').classList.remove('hidden');$('#app').classList.add('hidden');$('#rName').value=me?.name||'';unitButtons($('#rUnits'),regUnit,u=>regUnit=u)}
+$('#rGo').onclick=()=>{const name=$('#rName').value.trim();if(!name){toast('Coloque seu nome');return}if(!regUnit){toast('Escolha sua unidade');return}
+  me={name,unit:regUnit};localStorage.setItem('k_me',JSON.stringify(me));startApp()};
+$('#changeMe').onclick=e=>{e.preventDefault();showReg()};
+
+/* ---------- dados ---------- */
+const LS=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'{}');localStorage.setItem(k,JSON.stringify(v))}catch(e){return{}}};
+let CFG=O.CFG0,CATS=[],FIN=[],PH=[],NOMES=[],MYNOM=LS('o_nom'),MYVOTE=LS('o_vote'),SRVVOTED=new Set();
+async function refresh(t){
+  try{
+    if(!t||t==='oscar_config')CFG=await O.getConfig();
+    if(!t||t==='oscar_categorias')CATS=(await O.getCats()).filter(c=>c.ativa);
+    if(!t||t==='oscar_finalists')FIN=await store.list('oscar_finalists');
+    if(!t||t==='oscar_photos')PH=(await store.list('oscar_photos')).filter(p=>p.status==='approved');
+    if(!t&&CFG.fase==='indicacao')NOMES=(await store.rpc('oscar_nomes'))||[];
+    if(!t&&CFG.fase==='votacao'){const r=(await store.rpc('oscar_meus_votos',{p_device:dev}))||[];SRVVOTED=new Set(r.map(x=>x.category_id))}
+  }catch(e){console.error(e)}
+  if(me)render();
+}
+const TABLES=['oscar_config','oscar_categorias','oscar_finalists','oscar_photos'];
+let pendT=null,pend=new Set();
+function refreshSoon(t){pend.add(t||'*');clearTimeout(pendT);pendT=setTimeout(()=>{const ts=[...pend];pend.clear();ts.includes('*')||ts.includes('oscar_config')?refresh():ts.forEach(x=>refresh(x))},300)}
+store.on(ev=>refreshSoon(TABLES.includes(ev.table)?ev.table:null),TABLES);
+setInterval(()=>refresh(),20000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+if(store.wantsOnline&&store.mode!=='supabase')setTimeout(()=>toast('Sem conexão com o servidor. Verifique a internet e recarregue a página.'),500);
+
+/* ---------- abas ---------- */
+let tab='oscar';
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  ['oscar','fotos'].forEach(t=>$('#tab-'+t).classList.toggle('hidden',t!==tab));window.scrollTo(0,0)});
+
+/* ---------- tela principal (muda com a fase) ---------- */
+const votaveis=()=>CATS.filter(c=>c.tipo==='voto');
+let editing=null; // categoria com a caixa de indicação aberta (não redesenha enquanto digita)
+function render(){
+  $('#meName').textContent=me.name;$('#meUnit').innerHTML=chip(me.unit);
+  const f=CFG.fase;
+  $('#phase').classList.remove('hidden');
+  $('#phase').textContent={indicacao:'📝 Fase de indicação: indique um colega em cada categoria (dá para trocar até fechar).',votacao:'🗳️ Votação aberta! Escolha 1 finalista por categoria. Votou, votou 😉',cerimonia:'🎬 A cerimônia está rolando no telão! 🍿',encerrado:'🏁 O Oscar acabou. Obrigado por participar!'}[f]||'';
+  if(f==='indicacao'){if(!editing)renderIndicacao()}
+  else{editing=null;if(f==='votacao')renderVotacao();else renderResultados()}
+  renderFotos();
+}
+
+function renderIndicacao(){
+  const cs=votaveis(),n=cs.filter(c=>MYNOM[c.id]).length;
+  $('#main').innerHTML=`<div class="prog"><b>Você indicou ${n} de ${cs.length}</b><div class="bar"><i style="width:${cs.length?n/cs.length*100:0}%"></i></div></div>`+
+    cs.map(c=>{const m=MYNOM[c.id];return `<div class="card ${m?'done':''}" data-c="${esc(c.id)}">
+      <div class="h"><div class="em">${esc(c.emoji||'🏆')}</div><div><div class="nm">${esc(c.nome)}</div><div class="ds">${esc(c.descricao||'')}</div></div></div>
+      <div class="st">${m?`Sua indicação: <b>${esc(m.name)}</b>${chip(m.unit)}`:'<span class="dim">Ainda sem indicação</span>'}</div>
+      <button class="full ${m?'':'pri'}" data-edit="${esc(c.id)}" style="margin-top:10px">${m?'✏️ Trocar':'➕ Indicar alguém'}</button></div>`}).join('')||'<p class="dim">Nenhuma categoria aberta ainda.</p>';
+}
+$('#main').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.edit)openEdit(b.dataset.edit);
+  else if(b.dataset.vote)vote(b.dataset.cat,b.dataset.vote);
+});
+function openEdit(cid){
+  const card=$(`.card[data-c="${CSS.escape(cid)}"]`),m=MYNOM[cid]||{};editing=cid;
+  let unit=m.unit||null;
+  card.querySelector('.st').innerHTML=`<input type="text" class="nIn" maxlength="40" placeholder="Nome do colega" value="${esc(m.name||'')}" autocomplete="off"><div class="sug hidden"></div>
+    <small>Unidade do colega:</small><div class="units nU"></div>
+    <div class="row2"><button class="nCancel">Voltar</button><button class="pri nSave">Salvar indicação</button></div>
+    ${m.name?'<button class="full nDel" style="margin-top:8px;background:none;border:none;color:var(--dim);font-size:14px">Tirar minha indicação</button>':''}`;
+  card.querySelector('[data-edit]').remove();
+  const inp=card.querySelector('.nIn'),sug=card.querySelector('.sug'),uEl=card.querySelector('.nU');
+  const pickU=u=>{unit=u;unitButtons(uEl,u,x=>unit=x)};pickU(unit);
+  inp.oninput=()=>{const q=key(inp.value);
+    const list=q?NOMES.filter(x=>x.chave.includes(q)&&!(x.chave===q&&x.unidade===unit&&x.nome===inp.value.trim())).slice(0,6):[];
+    sug.innerHTML=list.map(x=>`<button data-n="${esc(x.nome)}" data-u="${esc(x.unidade)}">${esc(x.nome)}${chip(x.unidade)}</button>`).join('');
+    sug.classList.toggle('hidden',!list.length)};
+  sug.onclick=ev=>{const s=ev.target.closest('button');if(!s)return;inp.value=s.dataset.n;pickU(s.dataset.u);sug.classList.add('hidden')};
+  card.querySelector('.nCancel').onclick=()=>{editing=null;renderIndicacao()};
+  const send=async(name,u)=>{
+    const r=await store.rpc('oscar_indicar',{p_device:dev,p_categoria:cid,p_nome:name,p_chave:key(name),p_unidade:u||'',p_voter_name:me.name,p_voter_unit:me.unit});
+    if(r==='fechado'){toast('A fase de indicação fechou 🙈');editing=null;refresh();return false}
+    if(r!=='ok'){toast('Não deu para salvar. Tente de novo.');return false}
+    return true};
+  card.querySelector('.nSave').onclick=async ev=>{
+    const name=cleanName(inp.value);if(!name){toast('Digite o nome do colega');return}if(!unit){toast('Escolha a unidade do colega');return}
+    // se já existe esse nome com outro jeito de escrever, usa o que já está lá (João = Joao)
+    const same=NOMES.find(x=>x.chave===key(name)&&x.unidade===unit),final=same?same.nome:name;
+    ev.target.disabled=true;
+    try{if(await send(final,unit)){MYNOM[cid]={name:final,unit};LS('o_nom',MYNOM);if(!same)NOMES.push({nome:final,chave:key(final),unidade:unit});toast('Indicação salva ✅');editing=null;renderIndicacao()}}
+    catch(err){console.error(err);toast('Sem conexão. Tente de novo.')}
+    ev.target.disabled=false};
+  const del=card.querySelector('.nDel');
+  if(del)del.onclick=async()=>{try{if(await send('','')){delete MYNOM[cid];LS('o_nom',MYNOM);toast('Indicação retirada');editing=null;renderIndicacao()}}catch(err){toast('Sem conexão. Tente de novo.')}};
+  inp.focus();
+}
+
+function renderVotacao(){
+  const cs=votaveis().filter(c=>FIN.some(f=>f.category_id===c.id));
+  const voted=c=>MYVOTE[c.id]||SRVVOTED.has(c.id);
+  const n=cs.filter(voted).length;
+  $('#main').innerHTML=`<div class="prog"><b>Você votou em ${n} de ${cs.length}</b><div class="bar"><i style="width:${cs.length?n/cs.length*100:0}%"></i></div></div>`+
+    cs.map(c=>{const fs=FIN.filter(f=>f.category_id===c.id).sort((a,b)=>(a.ordem-b.ordem)||a.name.localeCompare(b.name,'pt'));const mv=MYVOTE[c.id],v=voted(c);
+      return `<div class="card ${v?'done':''}"><div class="h"><div class="em">${esc(c.emoji||'🏆')}</div><div><div class="nm">${esc(c.nome)}</div><div class="ds">${esc(c.descricao||'')}</div></div></div>
+      ${v?`<div class="st">✅ ${mv?`Você votou em <b>${esc(mv.name)}</b>`:'Você já votou nesta categoria'}</div>`:''}
+      <div class="fins">${fs.map(f=>`<button class="fin ${mv&&mv.id===f.id?'mine':''}" ${v?'disabled':''} data-cat="${esc(c.id)}" data-vote="${esc(f.id)}">${avatar(f.name,f.unit,f.photo_url)}<div>${esc(f.name)}</div>${chip(f.unit)}</button>`).join('')}</div></div>`}).join('')
+    +(cs.length?'':'<p class="dim">Os finalistas ainda não foram definidos.</p>');
+}
+async function vote(cid,fid){
+  const c=CATS.find(x=>x.id===cid),f=FIN.find(x=>x.id===fid);if(!c||!f)return;
+  if(!await kDialog({title:c.nome,msg:`Votar em ${f.name}?\n\nVotou, votou: depois não dá para trocar.`,icon:c.emoji||'🏆',ok:'Votar',cancel:'Voltar'}))return;
+  try{
+    const r=await store.rpc('oscar_votar',{p_device:dev,p_categoria:cid,p_finalista:fid,p_unit:me.unit});
+    if(r==='ok'){MYVOTE[cid]={id:fid,name:f.name};LS('o_vote',MYVOTE);toast('Voto registrado ✅')}
+    else if(r==='ja_votou'){SRVVOTED.add(cid);toast('Você já tinha votado nesta categoria 😉')}
+    else if(r==='fechado'){toast('A votação fechou 🙈');refresh();return}
+    else toast('Não deu para votar. Tente de novo.');
+  }catch(e){console.error(e);toast('Sem conexão. Tente de novo.')}
+  renderVotacao();
+}
+
+function renderResultados(){
+  const R=CFG.resultado||{},cs=CATS.filter(c=>R[c.id]);
+  const uni=R['unidade-do-ano'];
+  $('#main').innerHTML=(CFG.fase==='cerimonia'?'<div class="big">🍿 ACOMPANHE NO TELÃO</div><p class="dim" style="text-align:center">Os vencedores aparecem aqui assim que forem anunciados.</p>':'<div class="big">🏆 VENCEDORES</div>')+
+    cs.filter(c=>c.tipo!=='unidade').map(c=>`<div class="card"><div class="h"><div class="em">${esc(c.emoji||'🏆')}</div><div class="nm">${esc(c.nome)}</div></div>
+      ${(R[c.id].winners||[]).map(w=>`<div class="win">${avatar(w.name,w.unit,w.photo_url)}<div><b>${esc(w.name)}</b>${chip(w.unit)}</div></div>`).join('')||'<div class="st dim">Sem votos</div>'}</div>`).join('')+
+    (uni&&uni.podio?`<div class="card"><div class="h"><div class="em">🏢</div><div class="nm">Unidade do Ano</div></div>${uni.podio.map((u,i)=>`<div class="win"><div class="disp" style="font-size:30px;width:34px">${['🥇','🥈','🥉'][i]||''}</div><div><b>${esc(unitOf(u.unit).nome)}</b> <span class="dim">${u.score} pts</span></div></div>`).join('')}</div>`:'');
+}
+
+/* ---------- tapete vermelho ---------- */
+function renderFotos(){$('#gal').innerHTML=PH.slice().reverse().map(p=>`<img src="${esc(p.url)}" alt="" loading="lazy">`).join('')}
+$('#pBtn').onclick=()=>$('#pFile').click();
+$('#pFile').onchange=async()=>{
+  const files=[...$('#pFile').files].slice(0,5);$('#pFile').value='';if(!files.length)return;
+  $('#pBtn').disabled=true;let ok=0;
+  for(const [i,f] of files.entries()){
+    $('#pMsg').textContent=`Enviando ${i+1} de ${files.length}...`;
+    try{const {path,url}=await O.uploadPhoto(f,'fotos');
+      const r=await store.rpc('oscar_foto',{p_device:dev,p_path:path,p_url:url,p_autor:me.name,p_unit:me.unit});
+      if(r==='limite'){toast('Você já mandou o máximo de fotos 😅');break}if(r==='ok')ok++}
+    catch(e){console.error(e);toast('Uma foto não foi: '+(e.message||'erro'))}
+  }
+  $('#pBtn').disabled=false;$('#pMsg').textContent=ok?`✅ ${ok} foto${ok>1?'s':''} enviada${ok>1?'s':''}! Aparece${ok>1?'m':''} no telão depois de aprovada${ok>1?'s':''}.`:'';
+};
+
+function startApp(){$('#reg').classList.add('hidden');$('#app').classList.remove('hidden');render()}
+refresh().then(()=>{me&&me.name&&me.unit?startApp():showReg()});
+</script>
+</body>
+</html>

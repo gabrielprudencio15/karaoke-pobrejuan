@@ -47,6 +47,13 @@ window.KARAOKE_CONFIG = {
     { min: 0,  frases: ['Volta pra grelha e tenta de novo 😂', 'O importante é a resenha!', 'Coragem nota 1000! 🎤'] }
   ],
   FRASE_RECORDE: '🏆 NOVO RECORDE! O fogo é seu!',
+
+  // Oscar Pobre Juan (oscar.html / oscar-telao.html / oscar-admin.html)
+  OSCAR: {
+    TITULO: 'OSCAR POBRE JUAN 2026',
+    PIN: '',                    // tranca extra da tela do admin (opcional). A proteção de verdade é a senha do telão.
+    FOTO_MAX_PX: 1600           // as fotos do tapete vermelho são reduzidas no celular antes de enviar
+  },
 };
 
 (function () {
@@ -102,6 +109,9 @@ window.KARAOKE_CONFIG = {
     async clear(t) { this._write(t, []); this._notify({ table: t, type: 'DELETE' }); }
     on(fn, tables = ALL) { const s = { fn, tables }; this.subs.push(s); return () => { this.subs = this.subs.filter(x => x !== s); }; }
     onStatus(fn) { fn(this.status); }
+    async rpc(name, args) { const f = this.localRpc && this.localRpc[name]; if (!f) throw new Error('Função ' + name + ' não existe no modo local'); return f(args || {}, this); }
+    async uploadFile(path, blob) { return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); }); }
+    async removeFiles() {}
     // no modo local, o "canal" liga as abas deste mesmo navegador (útil para testar)
     bus(topic, onMsg) {
       if (!('BroadcastChannel' in window)) return { send: () => {} };
@@ -128,7 +138,24 @@ window.KARAOKE_CONFIG = {
       if (error) throw error;
     }
     async signOut() { await this.sb.auth.signOut(); }
-    T(t) { return 'karaoke_' + t; }
+    // comandos pelo canal público (ex.: controle da cerimônia do Oscar) vão com o token do login;
+    // quem recebe confere no servidor se o token é de verdade
+    async accessToken() { try { const { data } = await this.sb.auth.getSession(); return data.session ? data.session.access_token : ''; } catch (e) { return ''; } }
+    async verifyToken(t) {
+      if (!t) return false; this._okTok = this._okTok || new Map();
+      const c = this._okTok.get(t); if (c && c > Date.now()) return true;
+      try { const { data, error } = await this.sb.auth.getUser(t); if (error || !data || !data.user) return false; this._okTok.set(t, Date.now() + 5 * 60 * 1000); return true; } catch (e) { return false; }
+    }
+    T(t) { return t.startsWith('oscar_') ? t : 'karaoke_' + t; }
+    // funções do banco (o celular do Oscar só indica/vota por elas; o servidor confere a fase)
+    async rpc(name, args) { const { data, error } = await this.sb.rpc(name, args || {}); if (error) throw error; return data; }
+    // fotos no Storage (bucket "oscar"); devolve o link público
+    async uploadFile(path, blob) {
+      const { error } = await this.sb.storage.from('oscar').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
+      if (error) throw error;
+      return this.sb.storage.from('oscar').getPublicUrl(path).data.publicUrl;
+    }
+    async removeFiles(paths) { for (const part of chunks(paths.filter(Boolean), 100)) { const { error } = await this.sb.storage.from('oscar').remove(part); if (error) throw error; } }
     _setStatus(s) { if (s === this.status) return; this.status = s; this.statusSubs.forEach(f => { try { f(s); } catch (e) {} }); }
     onStatus(fn) { this.statusSubs.push(fn); fn(this.status); }
 
@@ -214,7 +241,7 @@ window.KARAOKE_CONFIG = {
     store = new LocalStore();
   }
   store.wantsOnline = wantsOnline;
-  if (!store.isAdmin) { store.isAdmin = async () => true; store.signIn = async () => {}; store.signOut = async () => {}; }
+  if (!store.isAdmin) { store.isAdmin = async () => true; store.signIn = async () => {}; store.signOut = async () => {}; store.accessToken = async () => 'local'; store.verifyToken = async () => true; }
 
   // Sugestões: cada envio tem um "batch"; reenviar cria um batch novo e só o último de cada celular conta.
   store.latestSugestoes = rows => {

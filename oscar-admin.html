@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0908">
+<title>Admin do Oscar</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="karaoke-store.js?v=202611160200"></script>
+<script src="oscar-core.js?v=202611160200"></script>
+<style>
+:root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#d9b46a;--gold2:#b09763;--ok:#4cc38a;--ink:#0f0806;--field:#0e0b0a}
+html{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:Montserrat,system-ui,sans-serif;font-size:15px}
+header{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,9,8,.96);z-index:20;flex-wrap:wrap}
+header .t{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-size:28px;letter-spacing:1px;color:var(--gold)}
+header nav{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+header nav button.on{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:800}
+#st{font-size:12px;color:var(--dim)}
+main{padding:16px 18px 60px;max-width:1200px;margin:0 auto}
+.hidden{display:none!important}
+h2{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-weight:400;color:var(--gold);font-size:30px;margin:8px 0 10px;letter-spacing:1px}
+h3{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-weight:400;color:var(--acc);font-size:22px;margin:18px 0 8px;letter-spacing:1px}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font:inherit;cursor:pointer}
+button.pri{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:800}
+button.danger{background:var(--acc2);border-color:var(--acc2);color:#fff;font-weight:700}
+button.sm{padding:5px 9px;font-size:13px}
+button:disabled{opacity:.45}
+input,select,textarea{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+textarea{width:100%;min-height:54px;resize:vertical}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.fases{display:flex;gap:8px;flex-wrap:wrap}
+.fases button{padding:14px 18px;font-size:16px}
+.fases button.on{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:800}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--dim);font-weight:600;font-size:13px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:var(--ink);margin-left:6px;vertical-align:middle}
+.dim{color:var(--dim)}small{color:var(--dim)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cat{display:grid;grid-template-columns:auto 60px 1fr 1fr auto;gap:8px;align-items:start}
+.cat .roteiro{grid-column:2/-1}
+.grp{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line)}
+.grp.hid{opacity:.45}
+.grp .n{flex:1;min-width:0}
+.cnt{font-family:"Bebas Neue",Impact,sans-serif;font-size:26px;color:var(--gold);width:40px;text-align:center}
+.av{width:52px;height:52px;border-radius:50%;background:var(--c);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--c);flex:none}
+.av span{font-family:"Bebas Neue",Impact,sans-serif;font-size:24px;color:var(--ink)}
+.av img{width:100%;height:100%;object-fit:cover}
+.fin{display:flex;gap:10px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line)}
+.fin input[type=text]{flex:1;min-width:120px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.ph{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ph img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in}
+.ph .b{padding:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.remote{display:flex;gap:10px;flex-wrap:wrap}
+.remote button{font-size:20px;padding:16px 22px}
+.now{font-size:20px;font-weight:800}
+.script{font-size:22px;line-height:1.45;background:#0f0c0a;border-left:4px solid var(--gold);padding:14px 18px;border-radius:8px;margin-top:8px;white-space:pre-line}
+.steps{max-height:420px;overflow:auto}
+.steps button{display:block;width:100%;text-align:left;border-radius:6px;margin:2px 0;padding:6px 10px;font-size:13px}
+.steps button.on{background:var(--gold);color:var(--ink);font-weight:800}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:12px 18px;border-radius:12px;z-index:300;max-width:90vw}
+.kdlg{position:fixed;inset:0;z-index:200;background:rgba(6,4,3,.78);display:flex;align-items:center;justify-content:center;padding:16px}
+.kbox{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:18px;padding:22px 22px 18px;width:min(460px,100%);text-align:center}
+.kbox.danger{border-top-color:var(--acc2)}
+.kic{font-size:34px;margin-bottom:10px}.kt{font-family:"Bebas Neue",Impact,sans-serif;text-transform:uppercase;font-size:28px;color:var(--gold);margin-bottom:6px}
+.km{line-height:1.5;white-space:pre-line}.kerr{color:#ff6b6b;font-size:13px;min-height:18px;margin-top:6px}
+.kbox input{width:100%;margin-top:12px;font-size:16px;padding:12px}
+.kb{display:flex;gap:10px;justify-content:center;margin-top:18px}.kb button{flex:1;max-width:210px;font-weight:700}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:150;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+#zoom img{max-width:95vw;max-height:95vh}
+</style>
+</head>
+<body>
+<header>
+  <div class="t">🏆 Admin do Oscar</div>
+  <nav id="tabs">
+    <button data-t="painel" class="on">📊 Painel</button><button data-t="cats">🗂️ Categorias</button><button data-t="nom">📝 Indicações</button>
+    <button data-t="fin">⭐ Finalistas</button><button data-t="fotos">📸 Fotos <span id="phN"></span></button><button data-t="cer">🎬 Cerimônia</button>
+  </nav>
+  <span id="st"></span>
+</header>
+<main id="m" class="hidden">
+  <!-- PAINEL -->
+  <section id="t-painel">
+    <h2>Fase atual</h2>
+    <div class="fases" id="fases"></div>
+    <small id="faseHint"></small>
+    <div class="grid" style="margin-top:14px">
+      <div class="box"><h3 style="margin-top:0">Ajustes</h3>
+        <div class="row" style="margin:6px 0">Finalistas por categoria <input type="number" id="cTop" min="2" max="8" style="width:70px"></div>
+        <div class="row" style="margin:6px 0">Unidade do Ano: peso Oscar <input type="number" id="cPo" min="0" max="1" step="0.05" style="width:80px"> peso karaokê <input type="number" id="cPk" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="row" style="margin:6px 0">Discurso (segundos, 0 = sem contador) <input type="number" id="cDs" min="0" max="120" style="width:70px"></div>
+        <button class="pri" id="cSave" style="margin-top:8px">Salvar ajustes</button>
+      </div>
+      <div class="box"><h3 style="margin-top:0">Participação por unidade</h3><div id="part"></div></div>
+      <div class="box"><h3 style="margin-top:0">Links</h3>
+        <div class="row" style="flex-direction:column;align-items:stretch">
+          <a href="oscar-telao.html" target="_blank"><button class="full" style="width:100%">🎬 Abrir o telão da cerimônia</button></a>
+          <a href="oscar.html" target="_blank"><button style="width:100%">📱 Página do celular</button></a>
+          <a href="oscar-qr.html" target="_blank"><button style="width:100%">🖨️ QR Codes para imprimir</button></a>
+        </div>
+      </div>
+    </div>
+    <h3>Ao vivo por categoria</h3>
+    <div class="box"><table><thead><tr><th>Categoria</th><th class="num">Indicações</th><th class="num">Pessoas indicadas</th><th class="num">Finalistas</th><th class="num">Votos</th></tr></thead><tbody id="live"></tbody></table></div>
+    <div class="row" style="margin-top:14px">
+      <button id="csvBtn">⬇️ Exportar resultados (CSV)</button>
+      <label class="row" style="gap:6px"><input type="checkbox" id="showRes"> 👁️ Mostrar quem está ganhando (spoiler!)</label>
+      <span style="flex:1"></span>
+      <button class="danger" id="zeroBtn">🗑️ Zerar Oscar</button>
+    </div>
+  </section>
+
+  <!-- CATEGORIAS -->
+  <section id="t-cats" class="hidden">
+    <h2>Categorias</h2>
+    <small>Nome, emoji, descrição e a fala do apresentador (modo roteiro). Desmarque "ativa" para esconder dos celulares e da cerimônia.</small>
+    <div id="catList"></div>
+    <button class="pri" id="catAdd" style="margin-top:10px">➕ Nova categoria</button>
+  </section>
+
+  <!-- INDICAÇÕES -->
+  <section id="t-nom" class="hidden">
+    <h2>Indicações</h2>
+    <div class="row"><select id="nomCat"></select><small>Nomes iguais sem acento/maiúscula já vêm juntos. Use "Juntar" para apelidos ("Zé" e "José").</small></div>
+    <div class="box" id="nomList"></div>
+  </section>
+
+  <!-- FINALISTAS -->
+  <section id="t-fin" class="hidden">
+    <h2>Finalistas</h2>
+    <div class="row"><select id="finCat"></select><button class="pri" id="finSug">✨ Sugerir os mais indicados</button><button id="finAll">✨ Sugerir em TODAS as categorias vazias</button></div>
+    <div class="box" id="finList"></div>
+    <div class="row"><input type="text" id="finName" placeholder="Nome do finalista" maxlength="40"><select id="finUnit"></select><button id="finAdd">➕ Adicionar</button></div>
+    <input type="file" id="finFile" accept="image/*" class="hidden">
+  </section>
+
+  <!-- FOTOS -->
+  <section id="t-fotos" class="hidden">
+    <h2>Tapete vermelho</h2>
+    <h3>Esperando aprovação</h3><div class="photos" id="phPend"></div>
+    <h3>Aprovadas (passam no telão)</h3><div class="photos" id="phOk"></div>
+    <h3>Recusadas</h3><div class="photos" id="phNo"></div>
+    <button id="phPurge" style="margin-top:10px">🗑️ Apagar de vez as recusadas</button>
+  </section>
+
+  <!-- CERIMÔNIA -->
+  <section id="t-cer" class="hidden">
+    <h2>Controle da cerimônia</h2>
+    <small>Abra o telão da cerimônia no notebook da TV. Daqui você passa os passos (ou use Espaço/Enter no próprio telão).</small>
+    <div class="grid" style="margin-top:10px;grid-template-columns:2fr 1fr">
+      <div>
+        <div class="box"><div class="dim" id="tvConn">Telão: aguardando conexão...</div><div class="now" id="tvNow">—</div>
+          <div class="remote" style="margin-top:12px"><button id="rBack">◀ Voltar</button><button class="pri" id="rNext">Próximo ▶</button><button id="rRep">🔁 Repetir</button></div></div>
+        <h3>📜 Roteiro do apresentador</h3>
+        <div class="script" id="script">—</div>
+      </div>
+      <div class="box"><h3 style="margin-top:0">Passos</h3><div class="steps" id="steps"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const O=window.OSCAR,{C,store,UNITS,esc,key,cleanName,unitOf,chip,avatar}=O;
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+function kDialog({title='',msg='',icon='⚠️',ok='Entendi',cancel=null,danger=false,input=null}){return new Promise(res=>{
+  const ov=document.createElement('div');ov.className='kdlg';
+  ov.innerHTML=`<div class="kbox${danger?' danger':''}"><div class="kic">${icon}</div>${title?`<div class="kt">${esc(title)}</div>`:''}<div class="km">${esc(msg)}</div>${input?`<input type="${input.type||'text'}" value="${esc(input.value||'')}" placeholder="${esc(input.ph||'')}">`:''}<div class="kerr"></div><div class="kb">${cancel?`<button data-v="0">${esc(cancel)}</button>`:''}<button class="${danger?'danger':'pri'}" data-v="1">${esc(ok)}</button></div></div>`;
+  const inp=ov.querySelector('input');
+  const done=v=>{ov.remove();res(input?(v?inp.value:null):v)};
+  ov.onclick=e=>{const b=e.target.closest('button');if(b)done(b.dataset.v==='1')};
+  if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')done(true);if(e.key==='Escape')done(false)});
+  document.body.appendChild(ov);(inp||ov.querySelector('.kb button:last-child')).focus()})}
+const kConfirm=(msg,o={})=>kDialog({msg,cancel:'Cancelar',ok:'Confirmar',icon:'❓',...o});
+
+/* ---------- entrada: senha do telão (+ PIN opcional) ---------- */
+function kLogin(){return new Promise(res=>{
+  const ov=document.createElement('div');ov.className='kdlg';
+  ov.innerHTML='<div class="kbox"><div class="kic">🔒</div><div class="kt">Admin do Oscar</div><div class="km">Use a mesma senha do telão do karaokê.</div><input type="password" id="kpw" placeholder="Senha do telão" autocomplete="current-password"><div class="kerr" id="kerr"></div><div class="kb"><button class="pri" id="kgo">Entrar</button></div></div>';
+  document.body.appendChild(ov);const pw=ov.querySelector('#kpw'),er=ov.querySelector('#kerr');pw.focus();
+  const go=async()=>{if(!pw.value)return;er.textContent='Entrando...';try{await store.signIn(pw.value);ov.remove();res(true)}catch(e){er.textContent=/invalid/i.test(e.message||'')?'Senha errada. Tente de novo.':'Não deu para entrar: '+(e.message||e)}};
+  pw.addEventListener('keydown',e=>{if(e.key==='Enter')go()});ov.querySelector('#kgo').onclick=go})}
+async function gate(){
+  if(store.mode==='supabase'&&!(await store.isAdmin()))await kLogin();
+  const pin=String(O.OC.PIN||'');
+  if(pin&&sessionStorage.getItem('o_pin')!==pin){
+    for(;;){const v=await kDialog({title:'PIN do Oscar',msg:'Digite o PIN do admin.',icon:'🔢',ok:'Entrar',input:{type:'password',ph:'PIN'}});if(v===pin){sessionStorage.setItem('o_pin',pin);break}toast('PIN errado')}
+  }
+  $('#m').classList.remove('hidden');
+}
+
+/* ---------- dados ---------- */
+let CFG=O.CFG0,CATS=[],NOM=[],FIN=[],VOTES=[],PH=[],PERF=[];
+async function load(t){
+  try{
+    if(!t||t==='oscar_config')CFG=await O.getConfig();
+    if(!t||t==='oscar_categorias')CATS=await O.getCats();
+    if(!t||t==='oscar_nominations')NOM=await store.list('oscar_nominations');
+    if(!t||t==='oscar_finalists')FIN=await store.list('oscar_finalists');
+    if(!t||t==='oscar_votes')VOTES=await store.list('oscar_votes');
+    if(!t||t==='oscar_photos')PH=await store.list('oscar_photos');
+    if(!t||t==='performances')PERF=await store.list('performances');
+  }catch(e){console.error(e);toast('Erro ao carregar: '+(e.message||e))}
+  render();
+}
+const TABLES=[...O.TABLES,'performances'];
+let pendT=null,pend=new Set(),busyEdit=false;
+store.on(ev=>{pend.add(TABLES.includes(ev.table)?ev.table:'*');clearTimeout(pendT);pendT=setTimeout(()=>{const ts=[...pend];pend.clear();ts.includes('*')?load():ts.forEach(x=>load(x))},300)},TABLES);
+store.onStatus(s=>$('#st').textContent=store.mode==='supabase'?(s==='online'?'🟢 online':'🟠 '+s):'🧪 modo local (teste)');
+setInterval(()=>{if(!document.hidden)load()},30000);
+
+/* ---------- abas ---------- */
+let TAB='painel';
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;TAB=b.dataset.t;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['painel','cats','nom','fin','fotos','cer'].forEach(t=>$('#t-'+t).classList.toggle('hidden',t!==TAB));render()};
+
+const votaveis=()=>CATS.filter(c=>c.tipo==='voto');
+const catOpts=(sel,list)=>list.map(c=>`<option value="${esc(c.id)}" ${c.id===sel?'selected':''}>${esc((c.emoji||'')+' '+c.nome)}${c.ativa?'':' (inativa)'}</option>`).join('');
+// indicações agrupadas por nome+unidade (João = Joao)
+function groups(cid){
+  const m=new Map();
+  NOM.filter(n=>n.category_id===cid).forEach(n=>{const k=n.nominee_key+'|'+n.nominee_unit;if(!m.has(k))m.set(k,{key:n.nominee_key,unit:n.nominee_unit,names:new Map(),rows:[],vis:0});const g=m.get(k);g.rows.push(n);if(!n.hidden)g.vis++;g.names.set(n.nominee_name,(g.names.get(n.nominee_name)||0)+1)});
+  return [...m.values()].map(g=>({...g,name:[...g.names.entries()].sort((a,b)=>b[1]-a[1])[0][0],hidden:g.vis===0})).sort((a,b)=>(b.vis-a.vis)||a.name.localeCompare(b.name,'pt'));
+}
+
+function render(){
+  if(TAB==='painel')renderPainel();
+  if(TAB==='cats'&&!busyEdit)renderCats();
+  if(TAB==='nom')renderNom();
+  if(TAB==='fin')renderFin();
+  if(TAB==='fotos')renderFotos();
+  if(TAB==='cer')renderCer();
+  const p=PH.filter(x=>x.status==='pending').length;$('#phN').textContent=p?'('+p+')':'';
+}
+
+/* ---------- painel ---------- */
+const FASE_HINT={indicacao:'Celulares indicam colegas. Depois escolha os finalistas e passe para Votação.',votacao:'Celulares votam nos finalistas (1 voto por categoria, sem trocar).',cerimonia:'Votação fechada. Abra o telão da cerimônia.',encerrado:'Tudo encerrado. Os celulares mostram os vencedores.'};
+function renderPainel(){
+  $('#fases').innerHTML=Object.entries(O.FASES).map(([k,v])=>`<button data-f="${k}" class="${CFG.fase===k?'on':''}">${v}</button>`).join('');
+  $('#faseHint').textContent=FASE_HINT[CFG.fase]||'';
+  if(document.activeElement.tagName!=='INPUT'){$('#cTop').value=CFG.top_n;$('#cPo').value=CFG.peso_oscar;$('#cPk').value=CFG.peso_karaoke;$('#cDs').value=CFG.discurso_seg}
+  const show=$('#showRes').checked;
+  $('#live').innerHTML=CATS.filter(c=>c.ativa).map(c=>{
+    if(c.tipo!=='voto')return `<tr><td>${esc(c.emoji+' '+c.nome)}</td><td colspan="4" class="dim">${c.tipo==='voz_karaoke'?'automática: maior nota do karaokê ('+PERF.length+' apresentações)':'automática: calculada no final'}</td></tr>`;
+    const ns=NOM.filter(n=>n.category_id===c.id&&!n.hidden),fs=FIN.filter(f=>f.category_id===c.id),vs=VOTES.filter(v=>v.category_id===c.id);
+    const w=show?O.winnersOf(c.id,FIN,VOTES):null;
+    return `<tr><td>${esc(c.emoji+' '+c.nome)}${w&&w.winners.length?`<br><small>🏆 ${w.winners.map(x=>esc(x.name)+' ('+x.votes+')').join(' / ')}</small>`:''}</td><td class="num">${ns.length}</td><td class="num">${new Set(ns.map(n=>n.nominee_key+'|'+n.nominee_unit)).size}</td><td class="num">${fs.length}</td><td class="num">${vs.length}</td></tr>`}).join('');
+  const devN=(rows,u)=>new Set(rows.filter(r=>r.voter_unit===u).map(r=>r.device_id)).size;
+  $('#part').innerHTML=`<table><thead><tr><th>Unidade</th><th class="num">Indicaram</th><th class="num">Votaram</th></tr></thead><tbody>${UNITS.map(u=>`<tr><td>${chip(u.id)}</td><td class="num">${devN(NOM,u.id)}</td><td class="num">${devN(VOTES,u.id)}</td></tr>`).join('')}
+    <tr><td><b>Total</b></td><td class="num"><b>${new Set(NOM.map(r=>r.device_id)).size}</b></td><td class="num"><b>${new Set(VOTES.map(r=>r.device_id)).size}</b></td></tr></tbody></table><small>Conta celulares (cada celular é uma pessoa).</small>`;
+}
+$('#showRes').onchange=renderPainel;
+$('#fases').onclick=async e=>{
+  const b=e.target.closest('button');if(!b||b.dataset.f===CFG.fase)return;const f=b.dataset.f;
+  let msg=`Mudar a fase para "${O.FASES[f]}"?`;
+  if(f==='votacao'){const sem=votaveis().filter(c=>c.ativa&&!FIN.some(x=>x.category_id===c.id));msg+='\n\nAs indicações fecham e os celulares passam a votar.';if(sem.length)msg+=`\n\n⚠️ ${sem.length} categoria(s) ainda sem finalistas: ${sem.map(c=>c.nome).join(', ')}. Elas não vão aparecer na votação.`}
+  if(f==='cerimonia')msg+='\n\nA votação fecha.';
+  if(f==='indicacao'&&CFG.fase!=='indicacao')msg+='\n\nOs celulares voltam a poder indicar.';
+  if(!await kConfirm(msg,{icon:'🔀',ok:'Mudar fase'}))return;
+  await saveCfg({fase:f});toast('Fase: '+O.FASES[f]);
+};
+async function saveCfg(patch){try{await store.upsert('oscar_config',[{id:'main',...patch,updated_at:new Date().toISOString()}]);CFG={...CFG,...patch};render()}catch(e){toast('Não salvou: '+(e.message||e))}}
+$('#cSave').onclick=()=>saveCfg({top_n:Math.max(2,Math.min(8,+$('#cTop').value||4)),peso_oscar:Math.max(0,+$('#cPo').value||0),peso_karaoke:Math.max(0,+$('#cPk').value||0),discurso_seg:Math.max(0,Math.min(120,+$('#cDs').value||0))}).then(()=>toast('Ajustes salvos ✅'));
+
+/* CSV */
+const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+$('#csvBtn').onclick=()=>{
+  const L=[['RESULTADO DO '+O.titulo],[],['Categoria','Finalista','Unidade','Votos','Vencedor']];
+  votaveis().forEach(c=>{const w=O.winnersOf(c.id,FIN,VOTES),ids=new Set(w.winners.map(x=>x.id));w.finalists.sort((a,b)=>b.votes-a.votes).forEach(f=>L.push([c.nome,f.name,f.unit,f.votes,ids.has(f.id)?'🏆 SIM':'']))});
+  const vz=O.vozDoAno(PERF);vz.winners.forEach(w=>L.push(['Voz do Ano',w.name,w.unit,'nota '+w.final,'🏆 SIM']));
+  const wins={};votaveis().forEach(c=>{const ws=O.winnersOf(c.id,FIN,VOTES).winners;ws.forEach(x=>wins[x.unit]=(wins[x.unit]||0)+1/ws.length)});vz.winners.forEach(x=>wins[x.unit]=(wins[x.unit]||0)+1/vz.winners.length);
+  L.push([],['UNIDADE DO ANO','Pontos','Estatuetas','Karaokê']);O.unidadeDoAno(wins,PERF,CFG).forEach(u=>L.push([u.unit,u.score,u.oscar,u.karaoke]));
+  L.push([],['INDICAÇÕES','Nome','Unidade','Indicações']);votaveis().forEach(c=>groups(c.id).forEach(g=>L.push([c.nome,g.name,g.unit,g.vis+(g.hidden?' (escondido)':'')])));
+  const blob=new Blob(['﻿'+L.map(r=>r.map(csvCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='oscar-resultado.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+$('#zeroBtn').onclick=async()=>{
+  if(!await kConfirm('Apagar TODAS as indicações, finalistas, votos e fotos do Oscar?\n\nAs categorias ficam. A fase volta para Indicação. Não dá para desfazer.',{icon:'🗑️',ok:'Apagar tudo',danger:true}))return;
+  const v=await kDialog({title:'Tem certeza?',msg:'Digite ZERAR para confirmar.',icon:'⚠️',ok:'Zerar',cancel:'Cancelar',danger:true,input:{ph:'ZERAR'}});
+  if(String(v||'').trim().toUpperCase()!=='ZERAR'){toast('Nada foi apagado');return}
+  try{
+    await store.removeFiles([...PH.map(p=>p.path),...FIN.map(f=>f.photo_path)].filter(Boolean)).catch(e=>console.warn(e));
+    for(const t of ['oscar_votes','oscar_finalists','oscar_nominations','oscar_photos'])await store.clear(t);
+    await saveCfg({fase:'indicacao',resultado:{}});await load();toast('Oscar zerado ✅');
+  }catch(e){toast('Erro ao zerar: '+(e.message||e))}
+};
+
+/* ---------- categorias ---------- */
+function renderCats(){
+  $('#catList').innerHTML=CATS.map((c,i)=>`<div class="box" data-id="${esc(c.id)}"><div class="cat">
+    <div style="display:flex;flex-direction:column;gap:4px"><button class="sm" data-a="up" ${i?'':'disabled'}>▲</button><button class="sm" data-a="down" ${i<CATS.length-1?'':'disabled'}>▼</button></div>
+    <input data-f="emoji" value="${esc(c.emoji||'')}" maxlength="4" style="font-size:22px;text-align:center">
+    <input data-f="nome" value="${esc(c.nome)}" maxlength="50" placeholder="Nome">
+    <input data-f="descricao" value="${esc(c.descricao||'')}" maxlength="80" placeholder="Descrição divertida">
+    <div class="row"><label class="row" style="gap:4px"><input type="checkbox" data-f="ativa" ${c.ativa?'checked':''}> ativa</label>${c.tipo==='voto'?'<button class="sm" data-a="del">🗑️</button>':`<small>${c.tipo==='voz_karaoke'?'🎤 automática':'🏢 automática'}</small>`}</div>
+    <div class="roteiro"><textarea data-f="roteiro" placeholder="Fala do apresentador (roteiro)">${esc(c.roteiro||'')}</textarea></div>
+    </div><div class="row" style="justify-content:flex-end"><button class="pri sm" data-a="save">Salvar</button></div></div>`).join('');
+}
+$('#catList').addEventListener('focusin',()=>busyEdit=true);
+$('#catList').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#catList').contains(document.activeElement))busyEdit=false},50));
+$('#catList').onclick=async e=>{
+  const b=e.target.closest('button');if(!b)return;const box=b.closest('[data-id]'),id=box.dataset.id,i=CATS.findIndex(c=>c.id===id);
+  try{
+    if(b.dataset.a==='save'){const patch={};box.querySelectorAll('[data-f]').forEach(x=>patch[x.dataset.f]=x.type==='checkbox'?x.checked:x.value.trim());if(!patch.nome){toast('Coloque um nome');return}
+      await store.update('oscar_categorias',id,patch);busyEdit=false;toast('Categoria salva ✅');load('oscar_categorias')}
+    if(b.dataset.a==='up'||b.dataset.a==='down'){const j=b.dataset.a==='up'?i-1:i+1,list=CATS.map((c,k)=>({id:c.id,ordem:k+1}));[list[i].ordem,list[j].ordem]=[list[j].ordem,list[i].ordem];
+      for(const x of list)if(CATS.find(c=>c.id===x.id).ordem!==x.ordem)await store.update('oscar_categorias',x.id,{ordem:x.ordem});busyEdit=false;load('oscar_categorias')}
+    if(b.dataset.a==='del'){const n=NOM.filter(x=>x.category_id===id).length+VOTES.filter(x=>x.category_id===id).length;
+      if(!await kConfirm(`Apagar a categoria "${CATS[i].nome}"?${n?`\n\nVai junto: ${n} indicação(ões)/voto(s).`:''}\n\nSe quiser só esconder, desmarque "ativa".`,{icon:'🗑️',ok:'Apagar',danger:true}))return;
+      await store.remove('oscar_categorias',id);busyEdit=false;load()}
+  }catch(err){toast('Erro: '+(err.message||err))}
+};
+$('#catAdd').onclick=async()=>{const nome=await kDialog({title:'Nova categoria',msg:'Nome da categoria (dá para editar o resto depois):',icon:'🗂️',ok:'Criar',cancel:'Cancelar',input:{ph:'Ex.: Mestre do Churrasco'}});
+  if(!nome||!nome.trim())return;const maxO=Math.max(0,...CATS.filter(c=>c.tipo==='voto').map(c=>c.ordem));
+  // entra depois da última votada (Voz e Unidade do Ano continuam no fim)
+  for(const c of CATS.filter(c=>c.tipo!=='voto'))await store.update('oscar_categorias',c.id,{ordem:c.ordem+1});
+  await store.insert('oscar_categorias',{id:'c-'+Date.now().toString(36),ordem:maxO+1,emoji:'🏆',nome:nome.trim().slice(0,50),descricao:'',roteiro:'',tipo:'voto',ativa:true});load()};
+
+/* ---------- indicações ---------- */
+let nomCat=null;
+function renderNom(){
+  const cs=votaveis();if(!nomCat||!cs.some(c=>c.id===nomCat))nomCat=cs[0]?.id;
+  $('#nomCat').innerHTML=catOpts(nomCat,cs);
+  const gs=groups(nomCat);
+  $('#nomList').innerHTML=gs.length?gs.map((g,i)=>`<div class="grp ${g.hidden?'hid':''}" data-i="${i}"><div class="cnt">${g.vis}</div>
+    <div class="n"><b>${esc(g.name)}</b>${chip(g.unit)}${g.names.size>1?`<br><small>escrito como: ${[...g.names.keys()].map(esc).join(', ')}</small>`:''}${g.hidden?' <small>(escondido)</small>':''}</div>
+    <select data-a="join"><option value="">🔗 Juntar com...</option>${gs.map((o,j)=>j===i?'':`<option value="${j}">${esc(o.name)} (${esc(o.unit)})</option>`).join('')}</select>
+    <button class="sm" data-a="ren">✏️</button><button class="sm" data-a="hide">${g.hidden?'👁️ Mostrar':'🙈 Esconder'}</button><button class="sm" data-a="del">🗑️</button></div>`).join(''):'<p class="dim">Ninguém indicou nesta categoria ainda.</p>';
+  $('#nomList').dataset.n=JSON.stringify(gs.map(g=>g.rows.map(r=>r.id)));
+}
+$('#nomCat').onchange=e=>{nomCat=e.target.value;renderNom()};
+async function moveGroup(g,name,unit){for(const r of g.rows)await store.update('oscar_nominations',r.id,{nominee_name:name,nominee_key:key(name),nominee_unit:unit})}
+async function askNameUnit(name,unit,title){
+  const v=await kDialog({title,msg:'Nome:',icon:'✏️',ok:'Continuar',cancel:'Cancelar',input:{value:name}});if(!v||!cleanName(v))return null;
+  const u=await kDialog({title,msg:'Unidade ('+UNITS.map(x=>x.id).join(', ')+'):',icon:'🏢',ok:'Salvar',cancel:'Cancelar',input:{value:unit}});
+  const uu=UNITS.find(x=>x.id.toLowerCase()===String(u||'').trim().toLowerCase());if(!uu){if(u!==null)toast('Unidade inválida');return null}
+  return {name:cleanName(v),unit:uu.id};
+}
+$('#nomList').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;const gs=groups(nomCat),g=gs[+b.closest('.grp').dataset.i];if(!g)return;
+  try{
+    if(b.dataset.a==='hide'){const h=!g.hidden;for(const r of g.rows)await store.update('oscar_nominations',r.id,{hidden:h});toast(h?'Escondido: não conta e não aparece no autocompletar':'Voltou a contar')}
+    if(b.dataset.a==='ren'){const v=await askNameUnit(g.name,g.unit,'Corrigir nome');if(v){await moveGroup(g,v.name,v.unit);toast('Corrigido ✅')}}
+    if(b.dataset.a==='del'){if(await kConfirm(`Apagar as ${g.rows.length} indicação(ões) de "${g.name}"?`,{icon:'🗑️',ok:'Apagar',danger:true})){await store.removeMany('oscar_nominations',g.rows.map(r=>r.id));toast('Apagado')}}
+  }catch(err){toast('Erro: '+(err.message||err))}
+  load('oscar_nominations');
+});
+$('#nomList').addEventListener('change',async e=>{
+  if(e.target.dataset.a!=='join'||e.target.value==='')return;const gs=groups(nomCat),g=gs[+e.target.closest('.grp').dataset.i],t=gs[+e.target.value];
+  if(!g||!t)return;
+  if(!await kConfirm(`Juntar "${g.name}" (${g.unit}) em "${t.name}" (${t.unit})?\n\nAs ${g.rows.length} indicação(ões) passam a contar para "${t.name}".`,{icon:'🔗',ok:'Juntar'})){e.target.value='';return}
+  try{await moveGroup(g,t.name,t.unit);toast('Juntado ✅')}catch(err){toast('Erro: '+(err.message||err))}load('oscar_nominations');
+});
+
+/* ---------- finalistas ---------- */
+let finCat=null,photoFor=null;
+$('#finUnit').innerHTML=UNITS.map(u=>`<option value="${esc(u.id)}">${esc(u.nome)}</option>`).join('');
+function renderFin(){
+  const cs=votaveis();if(!finCat||!cs.some(c=>c.id===finCat))finCat=cs[0]?.id;
+  $('#finCat').innerHTML=catOpts(finCat,cs);
+  const fs=FIN.filter(f=>f.category_id===finCat).sort((a,b)=>(a.ordem-b.ordem)||a.name.localeCompare(b.name,'pt'));
+  const show=$('#showRes').checked,w=show?O.winnersOf(finCat,FIN,VOTES):null;
+  $('#finList').innerHTML=fs.length?fs.map((f,i)=>`<div class="fin" data-id="${esc(f.id)}">${avatar(f.name,f.unit,f.photo_url)}
+    <input type="text" data-f="name" value="${esc(f.name)}" maxlength="40"><select data-f="unit">${UNITS.map(u=>`<option value="${esc(u.id)}" ${u.id===f.unit?'selected':''}>${esc(u.nome)}</option>`).join('')}</select>
+    ${w?`<b class="cnt" title="votos">${w.finalists.find(x=>x.id===f.id)?.votes??0}</b>`:''}
+    <button class="sm" data-a="photo">📷 ${f.photo_url?'Trocar foto':'Foto'}</button>${f.photo_url?'<button class="sm" data-a="nophoto">Sem foto</button>':''}
+    <button class="sm" data-a="up" ${i?'':'disabled'}>▲</button><button class="sm" data-a="down" ${i<fs.length-1?'':'disabled'}>▼</button><button class="sm" data-a="del">🗑️</button></div>`).join('')
+    :'<p class="dim">Sem finalistas. Clique em "Sugerir os mais indicados" ou adicione à mão.</p>';
+  const sel=document.activeElement;
+}
+$('#finCat').onchange=e=>{finCat=e.target.value;renderFin()};
+function suggestion(cid){
+  const gs=groups(cid).filter(g=>g.vis>0),n=+CFG.top_n||4;if(!gs.length)return[];
+  const cut=gs[Math.min(n,gs.length)-1].vis;
+  return gs.filter((g,i)=>i<n||g.vis===cut); // empate no corte: entram todos
+}
+async function applySuggestion(cid,ask=true){
+  const sug=suggestion(cid),cur=FIN.filter(f=>f.category_id===cid),nv=VOTES.filter(v=>v.category_id===cid).length;
+  if(!sug.length){if(ask)toast('Ninguém foi indicado nesta categoria');return false}
+  if(ask){const c=CATS.find(x=>x.id===cid);
+    if(!await kConfirm(`Finalistas sugeridos para ${c.nome}:\n\n${sug.map(g=>`${g.name} (${g.unit}) · ${g.vis} indicação(ões)`).join('\n')}${sug.length>(+CFG.top_n||4)?'\n\n(empate no último lugar: entraram todos)':''}${cur.length?`\n\n⚠️ Substitui os ${cur.length} finalista(s) atuais${nv?` e apaga ${nv} voto(s)`:''}.`:''}`,{icon:'✨',ok:'Usar estes'}))return false}
+  if(cur.length)await store.removeMany('oscar_finalists',cur.map(f=>f.id));
+  // guarda a foto de quem já era finalista
+  const oldPhoto=new Map(cur.map(f=>[f.name_key+'|'+f.unit,f]));
+  for(const [i,g] of sug.entries()){const o=oldPhoto.get(g.key+'|'+g.unit);await store.insert('oscar_finalists',{category_id:cid,name:g.name,name_key:g.key,unit:g.unit,ordem:i+1,photo_url:o?.photo_url||null,photo_path:o?.photo_path||null})}
+  return true;
+}
+$('#finSug').onclick=async()=>{try{if(await applySuggestion(finCat))toast('Finalistas definidos ✅')}catch(e){toast('Erro: '+(e.message||e))}load('oscar_finalists')};
+$('#finAll').onclick=async()=>{const vazias=votaveis().filter(c=>c.ativa&&!FIN.some(f=>f.category_id===c.id)&&suggestion(c.id).length);
+  if(!vazias.length){toast('Nenhuma categoria vazia com indicações');return}
+  if(!await kConfirm(`Sugerir os finalistas de ${vazias.length} categoria(s) vazia(s)?\n\n${vazias.map(c=>c.nome).join(', ')}`,{icon:'✨',ok:'Sugerir'}))return;
+  try{for(const c of vazias)await applySuggestion(c.id,false);toast('Pronto ✅ Confira cada categoria')}catch(e){toast('Erro: '+(e.message||e))}load('oscar_finalists')};
+$('#finAdd').onclick=async()=>{const name=cleanName($('#finName').value);if(!name){toast('Digite o nome');return}
+  const fs=FIN.filter(f=>f.category_id===finCat);if(fs.some(f=>f.name_key===key(name)&&f.unit===$('#finUnit').value)){toast('Já é finalista');return}
+  try{await store.insert('oscar_finalists',{category_id:finCat,name,name_key:key(name),unit:$('#finUnit').value,ordem:Math.max(0,...fs.map(f=>f.ordem))+1});$('#finName').value='';load('oscar_finalists')}catch(e){toast('Erro: '+(e.message||e))}};
+$('#finList').addEventListener('change',async e=>{const row=e.target.closest('[data-id]'),f=e.target.dataset.f;if(!row||!f)return;
+  const v=f==='name'?cleanName(e.target.value):e.target.value;if(!v)return;
+  try{await store.update('oscar_finalists',row.dataset.id,f==='name'?{name:v,name_key:key(v)}:{unit:v});toast('Salvo ✅');load('oscar_finalists')}catch(err){toast('Erro: '+(err.message||err))}});
+$('#finList').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;const id=b.closest('[data-id]').dataset.id,fs=FIN.filter(f=>f.category_id===finCat).sort((a,b)=>(a.ordem-b.ordem)||a.name.localeCompare(b.name,'pt')),i=fs.findIndex(f=>f.id===id);
+  try{
+    if(b.dataset.a==='photo'){photoFor=id;$('#finFile').click();return}
+    if(b.dataset.a==='nophoto')await store.update('oscar_finalists',id,{photo_url:null,photo_path:null});
+    if(b.dataset.a==='del'){const nv=VOTES.filter(v=>v.finalist_id===id).length;if(!await kConfirm(`Tirar "${fs[i].name}" dos finalistas?${nv?`\n\n⚠️ Apaga ${nv} voto(s) dele(a).`:''}`,{icon:'🗑️',ok:'Tirar',danger:true}))return;await store.remove('oscar_finalists',id)}
+    if(b.dataset.a==='up'||b.dataset.a==='down'){const j=b.dataset.a==='up'?i-1:i+1;for(const [k,f] of fs.entries()){const o=k===i?j+1:k===j?i+1:k+1;if(f.ordem!==o)await store.update('oscar_finalists',f.id,{ordem:o})}}
+  }catch(err){toast('Erro: '+(err.message||err))}
+  load('oscar_finalists');
+});
+$('#finFile').onchange=async()=>{const f=$('#finFile').files[0];$('#finFile').value='';if(!f||!photoFor)return;
+  toast('Enviando foto...');try{const {url,path}=await O.uploadPhoto(f,'finalistas',600);await store.update('oscar_finalists',photoFor,{photo_url:url,photo_path:path});toast('Foto salva ✅')}catch(e){toast('Erro na foto: '+(e.message||e))}
+  photoFor=null;load('oscar_finalists')};
+
+/* ---------- fotos ---------- */
+function renderFotos(){
+  const card=(p,btns)=>`<div class="ph" data-id="${esc(p.id)}"><img src="${esc(p.url)}" alt="" loading="lazy"><div class="b"><small>${esc(p.autor||'')}${p.unit?chip(p.unit):''}</small><span style="flex:1"></span>${btns}</div></div>`;
+  const by=s=>PH.filter(p=>p.status===s).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  $('#phPend').innerHTML=by('pending').map(p=>card(p,'<button class="pri sm" data-s="approved">✅ Aprovar</button><button class="sm" data-s="rejected">❌</button>')).join('')||'<p class="dim">Nenhuma foto esperando.</p>';
+  $('#phOk').innerHTML=by('approved').map(p=>card(p,'<button class="sm" data-s="rejected">Tirar</button>')).join('')||'<p class="dim">Nenhuma ainda.</p>';
+  $('#phNo').innerHTML=by('rejected').map(p=>card(p,'<button class="sm" data-s="approved">Aprovar</button>')).join('')||'<p class="dim">Nenhuma.</p>';
+}
+$('#t-fotos').addEventListener('click',async e=>{
+  const img=e.target.closest('.ph img');if(img){const z=document.createElement('div');z.id='zoom';z.innerHTML=`<img src="${esc(img.src)}">`;z.onclick=()=>z.remove();document.body.appendChild(z);return}
+  const b=e.target.closest('button[data-s]');if(!b)return;
+  try{await store.update('oscar_photos',b.closest('[data-id]').dataset.id,{status:b.dataset.s})}catch(err){toast('Erro: '+(err.message||err))}load('oscar_photos')});
+$('#phPurge').onclick=async()=>{const r=PH.filter(p=>p.status==='rejected');if(!r.length){toast('Nenhuma recusada');return}
+  if(!await kConfirm(`Apagar de vez ${r.length} foto(s) recusada(s)?`,{icon:'🗑️',ok:'Apagar',danger:true}))return;
+  try{await store.removeFiles(r.map(p=>p.path)).catch(e=>console.warn(e));await store.removeMany('oscar_photos',r.map(p=>p.id));toast('Apagadas')}catch(e){toast('Erro: '+(e.message||e))}load('oscar_photos')};
+
+/* ---------- cerimônia: controle remoto + roteiro ---------- */
+let TV=null,tvSeen=0;
+const bus=store.bus('oscar',(ev,p)=>{if(ev==='state'){TV=p;tvSeen=Date.now();if(TAB==='cer')renderCer()}});
+async function cmd(k,extra={}){bus.send('cmd',{k,...extra,tok:await store.accessToken()})}
+$('#rNext').onclick=()=>cmd('next');$('#rBack').onclick=()=>cmd('back');$('#rRep').onclick=()=>cmd('repeat');
+$('#steps').onclick=e=>{const b=e.target.closest('button[data-i]');if(b)cmd('goto',{i:+b.dataset.i})};
+setInterval(()=>{if(TAB==='cer')renderCer();cmd('ping')},5000);
+function renderCer(){
+  const live=TV&&Date.now()-tvSeen<12000;
+  $('#tvConn').textContent=live?'🟢 Telão conectado':'🔴 Telão não conectado (abra o oscar-telao.html e entre com a senha)';
+  $('#tvNow').textContent=TV?TV.label:'—';
+  $('#script').textContent=TV&&TV.script?TV.script:'O roteiro aparece aqui conforme a cerimônia anda.';
+  if(TV&&TV.steps){const html=TV.steps.map((s,i)=>`<button data-i="${i}" class="${i===TV.i?'on':''}">${esc(s)}</button>`).join('');if($('#steps').dataset.h!==html){$('#steps').innerHTML=html;$('#steps').dataset.h=html;const on=$('#steps .on');if(on)on.scrollIntoView({block:'nearest'})}}
+}
+
+gate().then(()=>load());
+</script>
+</body>
+</html>

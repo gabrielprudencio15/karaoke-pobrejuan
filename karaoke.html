@@ -9,8 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611130300"></script>
-<script src="spotify.js?v=202611130300"></script>
+<script src="karaoke-store.js?v=202611160200"></script>
+<script src="spotify.js?v=202611160200"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 /* tema escuro nos controles nativos (listas, caixas) e barras de rolagem invisíveis (a rolagem continua funcionando) */
@@ -120,6 +120,11 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 #qr{background:#fff;padding:8px;border-radius:10px}
 #qr img,#qr canvas{display:block;width:118px;height:118px}
 .qrBox b{font-size:22px;display:block}
+.oscBox{display:flex;align-items:center;gap:14px;background:rgba(22,18,16,.82);border:1px solid #6b5426;border-radius:18px;padding:10px 16px;max-width:46%}
+.oscBox .oph{height:118px;width:160px;object-fit:cover;border-radius:10px;display:block;flex:none}
+.oscBox .oqr{background:#fff;padding:6px;border-radius:8px;flex:none}
+.oscBox .oqr img,.oscBox .oqr canvas{display:block;width:96px;height:96px}
+.oscBox b{font-size:20px;display:block;color:#e3bf6f}
 .nowBox{flex:1;display:flex;align-items:center;gap:14px;background:rgba(22,18,16,.82);border:1px solid var(--line);border-radius:18px;padding:12px 22px;font-size:18px}
 
 /* sobreposições */
@@ -326,6 +331,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
       <div class="lobbyFoot">
         <div class="qrBox" id="qrBox"><div id="qr"></div><div><b>Entre na fila pelo celular</b><small id="qrUrl"></small></div></div>
         <div class="nowBox" id="lastBox"></div>
+        <div class="oscBox hidden" id="oscBox"></div>
       </div>
     </div>
   </div>
@@ -767,6 +773,7 @@ function renderLobby(){
   $('#topList').innerHTML=tops.length?tops.map(p=>`<li><b>${p.final}</b> · ${esc(p.name)}${chip(p.unit)} <small>${esc(p.song_title||'')}</small></li>`).join(''):'<li class="empty" style="list-style:none;margin-left:-26px">As melhores notas aparecem aqui.</li>';
   const last=[...P].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
   $('#lastBox').innerHTML=last?`<span style="font-size:30px">⭐</span><div><small>Última apresentação</small><div><b>${esc(last.name)}</b>${chip(last.unit)} · nota <b style="color:var(--acc)">${last.final??'—'}</b></div><small>${esc(last.song_title||'')}</small></div>`:`<span style="font-size:30px">🎶</span><div><b>Bem-vindos!</b><div><small>Escolha sua música, chame a galera da sua unidade e solte a voz.</small></div></div>`;
+  renderOscBox();
   const rawNext=$('#nextList').innerHTML,rawTop=$('#topList').innerHTML;
   fitLists();
   raf(()=>telaLobby(rawNext,rawTop));
@@ -776,6 +783,27 @@ function renderLobby(){
   if(NO_NET){$('#qrBox').innerHTML='<div style="font-size:40px">📴</div><div><b>Hoje a fila é pelo DJ</b><small>Peça sua música no notebook do karaokê</small></div>';return}
   if(!LINK){$('#qr').style.display='none';$('#qrUrl').textContent='(o QR Code aparece quando o site estiver publicado)'}
 }
+/* Oscar no telão de espera: QR Code enquanto indicação/votação estão abertas + fotos aprovadas do tapete vermelho */
+let OSC={fase:null,ph:[],i:0};
+async function oscLoad(){
+  if(OSC.off)return;
+  try{const [cf,ph]=await Promise.all([store.list('oscar_config'),store.list('oscar_photos')]);
+    OSC.fase=(cf.find(x=>x.id==='main')||{}).fase||null;OSC.ph=ph.filter(p=>p.status==='approved')}
+  catch(e){OSC.fase=null;OSC.ph=[];if(/42P01|does not exist|schema cache|404/.test((e&&(e.code+' '+e.message))||''))OSC.off=true} // tabelas do Oscar ainda não criadas: a caixa só não aparece (e para de perguntar)
+  renderLobby();
+}
+function renderOscBox(){
+  const ob=$('#oscBox');if(!ob)return;
+  const base=(C.LINK_CELULAR||'').replace(/[^/]*$/,''),qOn=!NO_NET&&!!base&&(OSC.fase==='indicacao'||OSC.fase==='votacao');
+  const ph=OSC.ph.length?OSC.ph[OSC.i%OSC.ph.length]:null;
+  ob.classList.toggle('hidden',!(qOn||ph));if(!(qOn||ph)){ob.innerHTML='';return}
+  const key=(ph?ph.url:'')+'|'+(qOn?OSC.fase:'');if(ob.dataset.k===key)return;ob.dataset.k=key;
+  ob.innerHTML=(ph?`<img class="oph" src="${esc(ph.url)}" alt="">`:'')+(qOn?`<div class="oqr" id="oqr"></div><div><b>🏆 Oscar Pobre Juan</b><small>${OSC.fase==='indicacao'?'Indique os colegas pelo celular!':'Votação aberta: escolha os vencedores!'}</small></div>`:`<div><b>📸 Tapete vermelho</b><small>Mande sua foto pelo site do Oscar</small></div>`);
+  if(qOn&&window.QRCode)new QRCode($('#oqr'),{text:base+'oscar.html',width:192,height:192,colorDark:'#0b0908',colorLight:'#ffffff'});
+}
+store.on(()=>{clearTimeout(oscLoad.t);oscLoad.t=setTimeout(oscLoad,800)},['oscar_config','oscar_photos']);
+setInterval(()=>{if(OSC.ph.length>1&&document.body.dataset.view==='lobby'){OSC.i++;renderLobby()}},7000);
+setInterval(oscLoad,60000);oscLoad();
 $('#testCel').onclick=()=>window.open('celular.html','_blank');
 $('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos e as notas da noite. Não dá para desfazer.'+(P.length?'\n\nA planilha com o resultado vai ser baixada antes, por segurança.':''),{title:'Zerar a noite?',ok:'Zerar tudo',icon:'🧹',danger:true}))return;
   if(P.length)downloadResult();
