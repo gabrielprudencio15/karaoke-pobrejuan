@@ -197,6 +197,19 @@ body[data-view=lobby] #lyrics,body[data-view=lobby] #singerBar,body[data-view=lo
 #intro .nm{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(60px,10vw,150px);line-height:.95;animation:pop .6s ease}
 #intro .sg{font-size:28px;color:var(--dim);margin-top:14px}
 #intro .cd{font-family:"Bebas Neue",Impact,sans-serif;font-size:96px;color:var(--acc2);margin-top:18px}
+#sorteio{z-index:80}
+#sorteio .card{border-color:#d9b46a;box-shadow:0 0 120px rgba(217,180,106,.35)}
+#sorteio .ph-k{color:#e3bf6f}
+#sorteio .sPr{font-size:clamp(22px,3vw,40px);font-weight:800;color:#f3dfa8;margin-top:8px}
+#sorteio .nm{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(70px,10vw,140px);line-height:1;margin:22px 0 10px;min-height:1em}
+#sorteio .nm.win{animation:sWin .7s cubic-bezier(.2,1.4,.4,1)}
+@keyframes sWin{from{transform:scale(.4);opacity:0}}
+#sorteio .sMsg{font-size:clamp(20px,2.4vw,32px);font-weight:800;margin-top:12px}
+.sortBox{margin-top:8px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.sortBox summary{cursor:pointer;font-weight:800}
+.sortBox input[type=text],.sortBox select{width:100%;margin-top:8px}
+.sortBox .sh{font-size:13px;margin-top:6px;line-height:1.5}
+.sortBox .sh s{opacity:.55}
 #roleta .nm{font-family:"Bebas Neue",Impact,sans-serif;font-size:110px;line-height:1;margin:20px 0;min-height:110px}
 #confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
 #confetti i{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;animation:fall linear forwards}
@@ -265,6 +278,14 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
   <button id="pauseBtn" class="full" style="margin-top:8px" title="Discurso, sorteio, jantar... segura a fila e mostra 'Já voltamos' (tecla P)">⏸️ Pausar festa (P)</button>
   <div class="list" id="qList"></div>
   <button id="roletaBtn" class="full" style="margin-top:8px">🎲 Roleta: sortear alguém</button>
+  <details class="sortBox" id="sortBox"><summary>🎁 Sorteio de brindes</summary>
+    <input id="sPremio" type="text" maxlength="40" placeholder="Prêmio (ex.: Vale-jantar para 2)">
+    <select id="sUnit"></select>
+    <label class="row" style="gap:6px;margin-top:8px;font-size:13px"><input type="checkbox" id="sRep"> quem já ganhou pode ganhar de novo</label>
+    <small id="sCount" style="display:block;margin-top:6px"></small>
+    <button id="sGo" class="full pri" style="margin-top:8px">🎁 Sortear no telão</button>
+    <div class="sh" id="sHist"></div>
+  </details>
 
   <h2>Letra da música atual</h2>
   <div class="row"><input id="lq" type="text" placeholder="artista música"></div>
@@ -360,6 +381,7 @@ footer #time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);w
 
 <div id="intro"><div class="k">NO PALCO</div><div class="nm" id="inName"></div><div id="inUnits" style="margin-top:10px"></div><div class="sg" id="inSong"></div><div class="cd" id="inCd"></div></div>
 <div id="phase" class="ov"><div class="card" id="phaseCard"></div></div>
+<div id="sorteio" class="ov"><div class="card"><div class="ph-k">🎁 SORTEIO DE BRINDES</div><div class="sPr" id="sPr"></div><div class="nm" id="sName"></div><div id="sWin"></div><div class="cardBtns"><button id="sAgain">🙈 Não está aqui: sortear de novo</button><button id="sClose" class="pri">Fechar</button></div></div></div>
 <div id="roleta" class="ov"><div class="card"><div class="ph-k">🎲 ROLETA DO KARAOKÊ</div><div class="nm" id="rolName"></div><div id="rolUnit"></div><div class="cardBtns"><button id="rolAgain">Girar de novo</button><button id="rolClose" class="pri">Fechar</button></div></div></div>
 <div id="confetti"></div>
 <div id="pauseOv"><div class="pk">⏸️ INTERVALO</div><div class="pn">JÁ VOLTAMOS!</div><div class="ps">A fila continua guardada 😉</div><div class="pph hidden" id="pausePh"><img alt=""><small></small></div><div class="posc hidden" id="pauseOsc"></div><div class="cardBtns"><button class="pri" id="pauseOff">▶ Voltar à festa (P)</button></div></div>
@@ -813,7 +835,7 @@ setInterval(oscLoad,60000);oscLoad();
 $('#testCel').onclick=()=>window.open('celular.html','_blank');
 $('#resetAll').onclick=async()=>{if(!await kConfirm('Isso apaga a fila, os votos e as notas da noite. Não dá para desfazer.'+(P.length?'\n\nA planilha com o resultado vai ser baixada antes, por segurança.':''),{title:'Zerar a noite?',ok:'Zerar tudo',icon:'🧹',danger:true}))return;
   if(P.length)downloadResult();
-  for(const t of['queue','votes','performances'])await store.clear(t);await setStage({status:'lobby',queue_id:null,voting_until:null});refresh();toast('Noite zerada')};
+  for(const t of['queue','votes','performances'])await store.clear(t);await setStage({status:'lobby',queue_id:null,voting_until:null});S.sorteios=[];save();refresh();toast('Noite zerada')};
 
 /* ===================== música e letra ===================== */
 let lyr={synced:false,lines:[]},offset=0,syncing=false,syncIdx=0,syncBackup=null,lastIdx=-2,curEl=null,cdEl=null,seeking=false;
@@ -1291,6 +1313,46 @@ async function roleta(){
   ensureCtx();fanfare(true);confetti();
 }
 $('#roletaBtn').onclick=roleta;$('#rolAgain').onclick=roleta;
+/* sorteio de brindes: entre todo mundo que participou (fila, karaokê e Oscar) */
+const nk=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+async function sortPeople(){
+  const m=new Map(),add=(n,u)=>{n=String(n||'').trim();if(!n||!u)return;const k=nk(n)+'|'+u;if(!m.has(k))m.set(k,{name:n,unit:u})};
+  [...Q,...P].forEach(x=>{add(x.name,x.unit);if(x.partner)add(x.partner,x.partner_unit||x.unit)});
+  if(!OSC.off)for(const t of['oscar_nominations','oscar_votes','oscar_photos']){try{(await store.list(t)).forEach(r=>add(r.voter_name||r.autor,r.voter_unit||r.unit))}catch(e){}}
+  return [...m.values()];
+}
+const sKey=w=>nk(w.name)+'|'+w.unit;
+async function sortCands(){
+  const u=$('#sUnit').value,rep=$('#sRep').checked,H=S.sorteios||[],won=new Set(H.filter(w=>!w.ausente).map(sKey)),gone=new Set(H.filter(w=>w.ausente).map(sKey));
+  return (await sortPeople()).filter(p=>(!u||p.unit===u)&&!gone.has(sKey(p))&&(rep||!won.has(sKey(p))));
+}
+async function renderSortBox(){
+  if(!$('#sUnit').options.length)$('#sUnit').innerHTML='<option value="">Todas as unidades</option>'+UNITS.map(u=>`<option value="${esc(u.id)}">Só ${esc(u.nome)}</option>`).join('');
+  const c=await sortCands();$('#sCount').textContent=c.length+' pessoa'+(c.length===1?'':'s')+' no sorteio (fila, karaokê e Oscar)';
+  const h=S.sorteios||[];
+  $('#sHist').innerHTML=h.length?'<b>Já sorteados:</b><br>'+h.map(w=>(w.ausente?'<s>':'')+'🎁 '+esc(w.premio||'brinde')+' → '+esc(w.name)+' ('+esc(unitOf(w.unit).nome)+')'+(w.ausente?'</s> não estava':'')).join('<br>')+'<br><a href="#" id="sClear" style="color:var(--dim)">limpar lista</a>':'';
+}
+function sTick(f){if(!ctx)return;const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime;o.type='square';o.frequency.value=f||1200;g.gain.setValueAtTime(0.06,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.05);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+0.06)}
+let sortBusy=false;
+async function sortear(){
+  if(sortBusy)return;const list=await sortCands();
+  if(!list.length){kAlert('Não sobrou ninguém para sortear com esse filtro.\n\nMarque "quem já ganhou pode ganhar de novo" ou troque a unidade.','Sorteio','🎁');return}
+  sortBusy=true;ensureCtx();const premio=$('#sPremio').value.trim();
+  $('#sorteio').classList.add('show');phaseOpen=true;$('#sPr').textContent=premio?'🎁 '+premio:'';$('#sWin').innerHTML='';$('#confetti').innerHTML='';
+  const nm=$('#sName');nm.classList.remove('win');
+  // os nomes passam rápido e vão desacelerando (~6 s)
+  let d=45,pick;while(d<520){pick=list[Math.random()*list.length|0];nm.textContent=pick.name;nm.style.color=unitOf(pick.unit).cor;sTick(900+Math.random()*500);await sleep(d);d*=1.085}
+  await sleep(450);nm.style.color='';nm.textContent=pick.name;void nm.offsetWidth;nm.classList.add('win');
+  $('#sWin').innerHTML=chip(pick.unit)+'<div class="sMsg">🎉 Parabéns! Vem buscar seu prêmio!</div>';
+  fanfare(true);confetti();
+  (S.sorteios=S.sorteios||[]).push({name:pick.name,unit:pick.unit,premio,t:Date.now()});save();renderSortBox();sortBusy=false;
+}
+$('#sGo').onclick=sortear;
+$('#sAgain').onclick=()=>{const h=S.sorteios||[],w=h[h.length-1];if(sortBusy||!w)return;w.ausente=true;save();$('#sPremio').value=w.premio||'';sortear()};
+$('#sClose').onclick=()=>{if(sortBusy)return;$('#sorteio').classList.remove('show');phaseOpen=busy&&$('#phase').classList.contains('show');$('#confetti').innerHTML=''};
+$('#sortBox').addEventListener('toggle',()=>{if($('#sortBox').open)renderSortBox()});
+['sUnit','sRep'].forEach(id=>$('#'+id).onchange=renderSortBox);
+$('#sHist').onclick=async e=>{if(e.target.id!=='sClear')return;e.preventDefault();if(!await kConfirm('Limpar a lista de sorteados? Quem já ganhou volta a participar.'))return;S.sorteios=[];save();renderSortBox()};
 $('#rolClose').onclick=()=>{$('#roleta').classList.remove('show');phaseOpen=busy&&$('#phase').classList.contains('show');$('#confetti').innerHTML=''};
 
 /* TV e teclado */
@@ -1451,7 +1513,7 @@ function morph(src,dst){
   while(dc.length>sc.length)dst.lastChild.remove();
   for(let i=0;i<sc.length;i++){if(i<dc.length)morph(sc[i],dc[i]);else dst.appendChild(dst.ownerDocument.importNode(sc[i],true))}
 }
-const MIRROR=['lyrics','singerBar','tLeft','intro','phase','roleta','confetti','pauseOv'];
+const MIRROR=['lyrics','singerBar','tLeft','intro','phase','roleta','sorteio','confetti','pauseOv'];
 function telaTick(){
   if(!TW)return;if(TW.closed){TW=null;$('#telaBtn').classList.remove('on');return}
   const d=TW.document;if(!d.body)return;

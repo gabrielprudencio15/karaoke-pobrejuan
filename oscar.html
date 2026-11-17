@@ -273,6 +273,7 @@ setInterval(tickCd,1000);
 function renderResultados(){
   const R=CFG.resultado||{},cs=CATS.filter(c=>R[c.id]);
   const uni=R['unidade-do-ano'];
+  setTimeout(()=>{if(CFG.fase==='encerrado'&&!$('#albumLink'))$('#main').insertAdjacentHTML('afterbegin','<a id="albumLink" href="album.html" style="text-decoration:none"><button class="pri full" style="margin-top:14px">📸 Ver o álbum da festa (fotos e resultados)</button></a>')});
   $('#main').innerHTML=(CFG.fase==='cerimonia'?'<div class="big">🍿 ACOMPANHE NO TELÃO</div><p class="dim" style="text-align:center">Os vencedores aparecem aqui assim que forem anunciados.</p>':'<div class="big">🏆 VENCEDORES</div>')+
     cs.filter(c=>c.tipo!=='unidade').map(c=>`<div class="card"><div class="h"><div class="em">${esc(c.emoji||'🏆')}</div><div class="nm">${esc(c.nome)}</div></div>
       ${(R[c.id].winners||[]).map(w=>`<div class="win">${avatar(w.name,w.unit,w.photo_url)}<div><b>${esc(w.name)}</b>${chip(w.unit)}</div></div>`).join('')||'<div class="st dim">Sem votos</div>'}</div>`).join('')+

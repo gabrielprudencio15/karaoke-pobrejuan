@@ -48,6 +48,16 @@ small,.dim{color:var(--dim);font-size:13px}
 #notice{margin:6px 16px 0;border-radius:14px;padding:0;font-weight:800;font-size:17px;transition:all .3s}
 #notice.on{padding:14px 16px;background:var(--panel2);border:1px solid var(--acc)}
 #notice.hot{background:var(--acc);color:var(--ink);animation:pulse 1s infinite alternate}
+#turnOv{position:fixed;inset:0;z-index:45;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px;background:radial-gradient(circle at 50% 40%,#5a2a16,#0b0908 75%)}
+#turnOv.on{display:flex}
+#turnOv.sing{background:radial-gradient(circle at 50% 40%,#c41d2c,#3a0a0e 80%);animation:turnFlash .8s infinite alternate}
+@keyframes turnFlash{to{filter:brightness(1.25)}}
+#turnOv .ti{font-size:84px;line-height:1;animation:turnBounce .9s infinite alternate}
+@keyframes turnBounce{to{transform:translateY(-12px) scale(1.06)}}
+#turnOv .tt{font-family:"Bebas Neue",Impact,sans-serif;font-size:58px;line-height:.95;letter-spacing:1px}
+#turnOv .ts{font-size:18px;font-weight:700;opacity:.92;max-width:340px}
+#turnOv .tsong{font-size:16px;color:#f3dfa8}
+#turnOv button{margin-top:10px;font-size:20px;padding:16px 28px;border-radius:16px;background:#fff;color:#0b0908;border:none;font-weight:800;min-width:220px}
 @keyframes pulse{to{transform:scale(1.02)}}
 .song{display:flex;align-items:center;gap:10px;padding:13px 4px;border-bottom:1px solid var(--line)}
 .song .t{flex:1;min-width:0}
@@ -170,6 +180,7 @@ nav button.on{color:var(--acc);font-weight:800}
   <div id="spList" style="overflow:auto;flex:1;min-height:60px"></div>
   <button class="full" id="spBack" style="margin-top:10px">Voltar</button>
 </div></div>
+<div id="turnOv"><div class="ti" id="turnI"></div><div class="tt" id="turnT"></div><div class="ts" id="turnS"></div><div class="tsong" id="turnSong"></div><button id="turnOk"></button></div>
 <div id="vote" class="ov"><div class="sheet" style="text-align:center">
   <div class="disp" style="font-size:30px;color:var(--acc)">📱 VOTE AGORA</div>
   <div style="font-size:20px;font-weight:800;margin-top:6px" id="vWho"></div>
@@ -263,7 +274,8 @@ async function oscLoad(){
 }
 function renderOsc(){
   const b=$('#oscBtn'),f=OSCF&&OSCF.fase;if(!b)return;
-  const txt={indicacao:['📝 Indique os colegas no Oscar!','1 toque por categoria · leva 1 minuto'],votacao:['🗳️ A votação do Oscar está aberta!','Escolha os vencedores de cada categoria'],cerimonia:['🎬 O Oscar está rolando no telão!','Veja os vencedores no celular'],encerrado:['🏆 Vencedores do Oscar','Veja quem levou cada estatueta']}[f];
+  const txt={indicacao:['📝 Indique os colegas no Oscar!','1 toque por categoria · leva 1 minuto'],votacao:['🗳️ A votação do Oscar está aberta!','Escolha os vencedores de cada categoria'],cerimonia:['🎬 O Oscar está rolando no telão!','Veja os vencedores no celular'],encerrado:['📸 Álbum da festa','Fotos, vencedores do Oscar e placar do karaokê']}[f];
+  b.setAttribute('href',f==='encerrado'?'album.html':'oscar.html');
   if(!me||!txt){b.classList.add('hidden');return}
   const left=OSCF.fecha_em&&(f==='indicacao'||f==='votacao')?Math.ceil((Date.parse(OSCF.fecha_em)-Date.now())/1000):null;
   const sub=left!=null&&left>0?'⏰ Fecha em '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0'):txt[1];
@@ -378,10 +390,46 @@ function renderNotice(){
   let msg='',key='',hot=false;
   if(sing){msg='🎤 É A SUA VEZ! Vai pro palco!';key='sing:'+sing.id;hot=true}
   else if(pos===0){msg='⏳ Você é o próximo! Vai se preparando.';key='next:'+w[0].id;hot=true}
-  else if(pos>0)msg=`📋 Você está na fila: posição ${pos+1}`;
+  else if(pos>0)msg=`📋 Você está na fila: posição ${pos+1} (uns ${pos*4} min)`;
   const n=$('#notice');n.textContent=msg;n.className=msg?('on'+(hot?' hot':'')):'';
   if(key&&key!==lastKey){lastKey=key;sessionStorage.setItem('k_lastkey',key);alertUser(msg)}
+  turnShow(sing?{k:key,sing:true,e:sing}:pos===0?{k:key,sing:false,e:w[0]}:null);
+  wake(!!sing||pos>=0);
 }
+/* tela cheia "É A SUA VEZ" / "Você é o próximo": fica até a pessoa tocar no botão */
+let turnCur=null,turnRep=null;
+function turnShow(t){
+  const ov=$('#turnOv'),acked=sessionStorage.getItem('k_ack')||'';
+  if(!t||t.k===acked){ov.className='';turnCur=null;clearInterval(turnRep);turnRep=null;document.title=TITLE0;return}
+  if(turnCur===t.k)return;turnCur=t.k;
+  ov.className='on'+(t.sing?' sing':'');
+  $('#turnI').textContent=t.sing?'🎤':'⏳';
+  $('#turnT').textContent=t.sing?'É A SUA VEZ!':'VOCÊ É O PRÓXIMO!';
+  $('#turnS').textContent=t.sing?'Corre pro palco que o microfone está te esperando! 🏃':'Vai se aproximando do palco 😉';
+  const pr=t.e&&t.e.mode!=='solo'&&t.e.partner?' com '+t.e.partner:'';
+  $('#turnSong').textContent=t.e&&t.e.song_title?'🎵 '+t.e.song_title+pr:'';
+  $('#turnOk').textContent=t.sing?'🏃 Tô indo!':'👍 Beleza!';
+  chime(t.sing);clearInterval(turnRep);turnRep=null;
+  // na vez de cantar, insiste a cada 12 s até a pessoa tocar no botão (vibra, toca e pisca o título)
+  if(t.sing){let b=0;turnRep=setInterval(()=>{chime(true);try{navigator.vibrate&&navigator.vibrate([400,150,400])}catch(e){}},12000);
+    const bl=setInterval(()=>{if(turnCur!==t.k){clearInterval(bl);document.title=TITLE0;return}document.title=(b++%2)?'🎤 SUA VEZ!':TITLE0},900)}
+}
+$('#turnOk').onclick=()=>{if(turnCur)sessionStorage.setItem('k_ack',turnCur);turnShow(null)};
+const TITLE0=document.title;
+/* som de aviso (o celular só deixa tocar depois do 1º toque na tela) */
+let actx=null;
+document.addEventListener('pointerdown',()=>{try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}},{passive:true});
+function chime(big){
+  if(!actx)return;try{const t=actx.currentTime;(big?[784,988,1175,1568]:[659,880]).forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),st=t+i*0.13;o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.35,st+0.02);g.gain.exponentialRampToValueAtTime(0.001,st+0.5);o.connect(g);g.connect(actx.destination);o.start(st);o.stop(st+0.55)})}catch(e){}
+}
+/* tela acesa enquanto a pessoa está na fila: com a tela apagada o celular perde a conexão e o aviso */
+let wl=null,wlWant=false;
+async function wake(on){
+  wlWant=on;if(!('wakeLock' in navigator))return;
+  try{if(on&&!wl&&!document.hidden){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}
+    else if(!on&&wl){await wl.release();wl=null}}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&wlWant)wake(true)});
 function alertUser(msg){
   try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}
   if('Notification' in window&&Notification.permission==='granted'){

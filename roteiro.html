@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roteiro da noite</title>
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="js/karaoke-store.js?v=202611170900"></script>
+<style>
+@page{size:A4 portrait;margin:12mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html{color-scheme:light}
+body{margin:0;background:#e9e4dc;font-family:Montserrat,system-ui,sans-serif;color:#1a120b;font-size:13px}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;padding:12px 16px;background:#161210;color:#f6f1ec}
+.bar button{font:inherit;padding:9px 14px;border-radius:10px;border:1px solid #352b25;background:#201a17;color:#f6f1ec;cursor:pointer}
+.bar button.pri{background:#d9b46a;border-color:#d9b46a;color:#0f0806;font-weight:800}
+.bar span{font-size:13px;color:#a39588}
+.page{max-width:210mm;margin:16px auto;background:#fff;padding:14mm 13mm;box-shadow:0 10px 40px rgba(0,0,0,.18)}
+h1{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:40px;margin:0;letter-spacing:1px;line-height:1}
+.sub{color:#6b5a48;margin:4px 0 0}
+h2{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:24px;letter-spacing:1px;margin:18px 0 6px;color:#8a5a2c;border-bottom:2px solid #d9b46a;padding-bottom:2px;break-after:avoid}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7a68;padding:4px 6px;border-bottom:1px solid #d8cfc2}
+td{vertical-align:top;padding:6px;border-bottom:1px solid #eee5d8;line-height:1.4}
+tr{break-inside:avoid}
+td.h{width:62px;font-weight:800;font-size:15px;white-space:nowrap}
+td.q{width:105px;color:#5a4a3a}
+td b.t{display:block}
+td small{color:#6b5a48;display:block;margin-top:2px}
+kbd{display:inline-block;border:1px solid #bba;border-bottom-width:2px;border-radius:4px;padding:0 5px;font:700 11px Montserrat,sans-serif;background:#faf7f2}
+[contenteditable]{outline:none;border-radius:4px;min-width:30px;display:inline-block}
+[contenteditable]:hover,[contenteditable]:focus{background:#fff6dc}
+td.q [contenteditable]:empty::before{content:"quem?";color:#c9bba8}
+.chk{list-style:none;padding:0;margin:0;columns:2;column-gap:18px}
+.chk li{break-inside:avoid;padding:3px 0 3px 22px;position:relative;line-height:1.4}
+.chk li::before{content:"";position:absolute;left:0;top:5px;width:12px;height:12px;border:1.5px solid #8a7a68;border-radius:3px}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;color:#fff;margin-right:4px;vertical-align:1px}
+.k{background:#d67e59}.o{background:#b08a3a}.x{background:#6b5a48}
+.links{font-size:12px;color:#5a4a3a;margin-top:10px;line-height:1.6;word-break:break-all}
+@media print{body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;padding:0;max-width:none}}
+@media (max-width:700px){.page{padding:16px}.chk{columns:1}td.q{width:70px}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <button class="pri" onclick="print()">🖨️ Imprimir</button>
+  <button onclick="resetAll()">↩️ Voltar ao padrão</button>
+  <span>Clique nos horários e em "quem?" para preencher. Fica salvo neste computador.</span>
+</div>
+<div class="page">
+  <h1 id="tt">ROTEIRO DA NOITE</h1>
+  <p class="sub" id="ev"></p>
+
+  <h2>📅 Na semana da festa</h2>
+  <ul class="chk">
+    <li>Imprimir e colar os QR Codes do Oscar nas unidades (<b>oscar-qr.html</b>)</li>
+    <li>Oscar na fase <b>Indicação</b> (admin → Painel)</li>
+    <li>2 dias antes: admin → <b>"Fecha em X min"</b> e escolher os <b>finalistas</b> (aba Finalistas)</li>
+    <li>Fotos dos finalistas (opcional, aba Finalistas → 📷)</li>
+    <li>Ensaio geral com TV, caixa, mics e 2 ou 3 celulares</li>
+    <li>Calibrar os mics no telão (🎯 Calibrar)</li>
+    <li>Imprimir o QR do karaokê para as mesas (<b>oscar-qr.html?p=celular</b>)</li>
+    <li>Combinar os prêmios do sorteio e quem entrega</li>
+    <li>Separar: carregador, extensão, cabo HDMI, pilhas dos mics, 4G reserva</li>
+    <li>Depois do ensaio: <b>Zerar noite</b> no telão</li>
+  </ul>
+
+  <h2>🎉 No dia</h2>
+  <table>
+    <thead><tr><th>Hora</th><th>O quê</th><th>Quem</th></tr></thead>
+    <tbody id="tl"></tbody>
+  </table>
+
+  <h2>🆘 Se der problema</h2>
+  <table>
+    <tbody>
+      <tr><td style="width:180px"><b>Sem som na caixa</b></td><td>Confira o cabo P2 no fone do notebook → <b>AUX</b> da caixa, volume do Windows e a <b>Saída de som</b> no telão. Toque o bipe na <b>checagem.html</b>.</td></tr>
+      <tr><td><b>Mic não dá nota</b></td><td>Barra lateral do telão: Mic 1 / Mic 2 certos? Os medidores mexem? Pilhas da receptora. Se mudou o salão, <b>🎯 Calibrar</b> de novo.</td></tr>
+      <tr><td><b>Celulares não entram</b></td><td>Telão mostra 🟢 Online? Internet do notebook. Peça para recarregar a página. Plano B: adicionar na fila pelo próprio telão.</td></tr>
+      <tr><td><b>Telão travou / fechou</b></td><td>Abrir o <b>karaoke.html</b> de novo: a fila e as notas estão salvas no Supabase. Escolher a pasta <b>musicas</b> e reabrir a TV (🖥️).</td></tr>
+      <tr><td><b>TV mostra a janela errada</b></td><td>Arraste a janela "Telão" para a TV e dê 2 cliques (tela cheia). Tecla <kbd>T</kbd> também.</td></tr>
+      <tr><td><b>Pediu a senha do telão</b></td><td>Digitar a senha do usuário karaoke-telao (quem criou no Supabase sabe).</td></tr>
+      <tr><td><b>Cerimônia: tela errada</b></td><td>No telão do Oscar: <kbd>←</kbd> volta, <kbd>R</kbd> repete, <kbd>Home</kbd> volta ao início. Ou pelo admin → aba Cerimônia → tocar no passo.</td></tr>
+      <tr><td><b>Alguém votou 2x no Oscar</b></td><td>Admin → Painel → "🕵️ Mesma pessoa em vários celulares" → apagar repetidos.</td></tr>
+    </tbody>
+  </table>
+  <div class="links" id="links"></div>
+</div>
+<script>
+const C=window.KARAOKE_CONFIG,$=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('#ev').textContent=(C.MARCA||'')+' · '+(C.EVENTO||'')+' · karaokê + Oscar';
+const K='<span class="tag k">KARAOKÊ</span>',O='<span class="tag o">OSCAR</span>',X='<span class="tag x">GERAL</span>';
+// [hora, o quê, como]
+const DEF=[
+  ['17:30',X+'Montagem','Notebook na tomada → TV (HDMI) → caixa (AUX). Receptora dos mics → interface USB. Ligar tudo.'],
+  ['18:15',X+'Checagem pré-festa','Abrir <b>checagem.html</b> no notebook: tudo verde? Testar mic (medidor) e o bipe na caixa.'],
+  ['18:30',K+'Preparar o telão','<b>karaoke.html</b> → escolher a pasta <b>musicas</b> → ligar os mics → abrir a TV (🖥️) → tela cheia. Conferir 🟢 Online.'],
+  ['18:40',K+'Zerar e testar','<b>Zerar noite</b> (apaga o ensaio). Cantar 1 música de teste e zerar de novo.'],
+  ['19:00',X+'Portas abertas','Telão parado no lobby com o QR Code. Oscar em <b>Votação</b> (admin → Painel). Fotos do tapete vermelho liberadas.'],
+  ['19:30',K+'Abertura do karaokê','Apresentador chama o 1º da fila: <b>▶ Chamar próximo</b> (barra lateral do telão).'],
+  ['20:45',X+'Jantar / intervalo','Tecla <kbd>P</kbd>: pausa a festa (TV mostra "Já voltamos" e as fotos aprovadas). Aprovar fotos no admin → Fotos.'],
+  ['21:00',X+'Sorteio de brindes','Telão → barra lateral → <b>🎁 Sorteio de brindes</b>: escrever o prêmio → Sortear. Se a pessoa não estiver: "Não está aqui".'],
+  ['21:15',K+'Volta o karaokê','<kbd>P</kbd> de novo (ou Esc). A fila continua de onde parou.'],
+  ['22:15',O+'Últimos votos','Admin → Painel → <b>Fecha em 10 min</b>: os celulares vibram e mostram a contagem.'],
+  ['22:30',K+'Última música','Parar de chamar a fila. Telão mostra o placar das unidades.'],
+  ['22:35',O+'Fechar a votação','Admin → <b>Mudar para Cerimônia</b>. Abrir <b>oscar-telao.html</b> na TV (tecla <kbd>T</kbd> = tela cheia) e clicar para começar.'],
+  ['22:40',O+'Cerimônia do Oscar','Apresentador com o admin no celular (aba 🎬 Cerimônia: mostra a fala de cada passo) ou <kbd>Espaço</kbd> no notebook. Retrospectiva → categorias → Voz do Ano → Unidade do Ano.'],
+  ['23:30',X+'Encerramento','Sorteio final 🎁. Admin → fase <b>Encerrado</b> (celulares mostram os vencedores).'],
+  ['Depois',X+'Pós-festa','Mandar no grupo o link do <b>álbum da festa</b> (album.html). Imprimir os certificados (oscar-certificados.html). Baixar o CSV do Oscar.']
+];
+const LS='roteiro_v1';let SV={};try{SV=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){}
+function render(){
+  $('#tl').innerHTML=DEF.map((r,i)=>`<tr><td class="h"><span contenteditable data-k="h${i}">${esc(SV['h'+i]??r[0])}</span></td><td><b class="t">${r[1]}</b><small>${r[2]}</small></td><td class="q"><span contenteditable data-k="q${i}">${esc(SV['q'+i]||'')}</span></td></tr>`).join('');
+}
+document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;SV[k]=e.target.textContent.trim();try{localStorage.setItem(LS,JSON.stringify(SV))}catch(err){}});
+function resetAll(){SV={};try{localStorage.removeItem(LS)}catch(e){}render()}
+const base=new URL('./',location.href).href;
+$('#links').innerHTML='<b>Endereços:</b> telão '+esc(base)+'karaoke.html · celular '+esc(base)+' · Oscar '+esc(base)+'oscar.html · admin '+esc(base)+'oscar-admin.html · checagem '+esc(base)+'checagem.html';
+render();
+</script>
+</body>
+</html>
