@@ -1,20 +1,8 @@
-# publica só os arquivos do site
+# publica só os arquivos do site (páginas na raiz + js/ + img/)
 *
 !.gitignore
-!index.html
-!celular.html
-!karaoke.html
-!karaoke-store.js
-!logo.svg
-!favicon.svg
-!sugestoes.html
-!sugestoes-resultado.html
-!spotify.js
-!spotify-teste.html
-!oscar.html
-!oscar-telao.html
-!oscar-admin.html
-!oscar-qr.html
-!oscar-certificados.html
-!checagem.html
-!oscar-core.js
+!*.html
+!js/
+!js/*.js
+!img/
+!img/*.svg

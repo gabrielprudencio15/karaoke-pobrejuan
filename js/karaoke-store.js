@@ -9,7 +9,7 @@
 window.KARAOKE_CONFIG = {
   EVENTO: 'Festa de Fim de Ano 2026',
   MARCA: 'Pobre Juan',
-  LOGO_URL: 'logo.svg',         // logo branco do site oficial (arquivo na mesma pasta). Vazio = nome em texto
+  LOGO_URL: 'img/logo.svg',     // logo branco do site oficial (pasta img). Vazio = nome em texto
   UNIDADES: [                   // cores da marca: cobre, dourado e um azul claro derivado do azul-marinho
     { id: 'PCG',  nome: 'PCG',  cor: '#d67e59' },
     { id: 'POA',  nome: 'POA',  cor: '#b09763' },

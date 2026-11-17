@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b0908">
 <title>Admin do Oscar</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611170100"></script>
-<script src="oscar-core.js?v=202611170100"></script>
+<script src="js/karaoke-store.js?v=202611170900"></script>
+<script src="js/oscar-core.js?v=202611170900"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#d9b46a;--gold2:#b09763;--ok:#4cc38a;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -321,7 +321,7 @@ async function saveCfg(patch){
   try{await store.upsert('oscar_config',[{id:'main',...patch,updated_at:new Date().toISOString()}]);CFG={...CFG,...patch};render()}
   catch(e){
     // banco sem as colunas novas (oscar.sql antigo): salva o resto e avisa
-    if(/fecha_em|retro/.test((e&&e.message)||'')){const {fecha_em,retro,...rest}=patch;toast('⚠️ Rode o oscar.sql de novo no Supabase para liberar a contagem e a retrospectiva');if(Object.keys(rest).length)return saveCfg(rest);return}
+    if(/fecha_em|retro/.test((e&&e.message)||'')){const {fecha_em,retro,...rest}=patch;toast('⚠️ Rode o sql/oscar.sql de novo no Supabase para liberar a contagem e a retrospectiva');if(Object.keys(rest).length)return saveCfg(rest);return}
     toast('Não salvou: '+(e.message||e))}
 }
 $('#cSave').onclick=()=>saveCfg({top_n:Math.max(2,Math.min(8,+$('#cTop').value||4)),peso_oscar:Math.max(0,+$('#cPo').value||0),peso_karaoke:Math.max(0,+$('#cPk').value||0),discurso_seg:Math.max(0,Math.min(120,+$('#cDs').value||0)),retro:$('#cRetro').checked}).then(()=>toast('Ajustes salvos ✅'));

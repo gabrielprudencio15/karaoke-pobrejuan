@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Checagem pré-festa</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611170100"></script>
-<script src="oscar-core.js?v=202611170100"></script>
+<script src="js/karaoke-store.js?v=202611170900"></script>
+<script src="js/oscar-core.js?v=202611170900"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--gold:#d9b46a;--ok:#4cc38a;--warn:#e8b04a;--bad:#e5484d}
 html{color-scheme:dark}
@@ -94,7 +94,7 @@ async function checkSec(){
   put(S,'login',adm?'ok':'bad',adm?'Telão logado com a senha':'Telão NÃO está logado',adm?'Este navegador pode controlar o telão, o admin e a cerimônia.':'Abra o karaoke.html neste navegador e digite a senha do telão quando pedir. Sem isso o telão não consegue mudar a fila.','<a href="karaoke.html" target="_blank"><button>Abrir telão</button></a>');
   // trava: um celular sem senha não pode mexer no palco
   try{const r=await anonFetch('/rest/v1/karaoke_stage',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:'checagem-trava',status:'x'})});
-    put(S,'trava',r.ok?'bad':'ok',r.ok?'Trava DESLIGADA':'Trava ligada',r.ok?'Qualquer celular consegue mexer no palco. Rode o trava.sql no Supabase.':'Celulares sem senha só entram na fila, votam e mandam fotos.')}
+    put(S,'trava',r.ok?'bad':'ok',r.ok?'Trava DESLIGADA':'Trava ligada',r.ok?'Qualquer celular consegue mexer no palco. Rode o sql/trava.sql no Supabase.':'Celulares sem senha só entram na fila, votam e mandam fotos.')}
   catch(e){put(S,'trava','warn','Não deu para testar a trava',esc(e.message))}
 }
 
@@ -148,9 +148,9 @@ async function checkOscar(){
   const S='🏆 Oscar';
   let cfg,cats,fin,ph,nom=[],votes=[];
   try{cfg=await O.getConfig();cats=(await O.getCats()).filter(c=>c.ativa);fin=await store.list('oscar_finalists');ph=await store.list('oscar_photos')}
-  catch(e){put(S,'osc','bad','Tabelas do Oscar não encontradas','Rode o oscar.sql no Supabase. Detalhe: '+esc(e.message));return}
+  catch(e){put(S,'osc','bad','Tabelas do Oscar não encontradas','Rode o sql/oscar.sql no Supabase. Detalhe: '+esc(e.message));return}
   const raw=(await store.list('oscar_config')).find(x=>x.id==='main')||{};
-  put(S,'sql','fecha_em' in raw?'ok':'warn','fecha_em' in raw?'Banco do Oscar atualizado':'Banco do Oscar desatualizado','fecha_em' in raw?'':'Rode o oscar.sql de novo no Supabase (não apaga nada): libera a contagem "fecha em X min", a retrospectiva e a detecção de voto repetido.');
+  put(S,'sql','fecha_em' in raw?'ok':'warn','fecha_em' in raw?'Banco do Oscar atualizado':'Banco do Oscar desatualizado','fecha_em' in raw?'':'Rode o sql/oscar.sql de novo no Supabase (não apaga nada): libera a contagem "fecha em X min", a retrospectiva e a detecção de voto repetido.');
   const vot=cats.filter(c=>c.tipo==='voto'),sem=vot.filter(c=>!fin.some(f=>f.category_id===c.id));
   try{if(await store.isAdmin()){nom=await store.list('oscar_nominations');votes=await store.list('oscar_votes')}}catch(e){}
   const devs=new Set(nom.map(n=>n.device_id)).size,vdevs=new Set(votes.map(n=>n.device_id)).size;

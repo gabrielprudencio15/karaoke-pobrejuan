@@ -6,11 +6,11 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0908">
 <title>Resultado das sugestões · Karaokê</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611170100"></script>
+<script src="js/karaoke-store.js?v=202611170900"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -79,7 +79,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const C=window.KARAOKE_CONFIG,store=window.KStore,UNITS=C.UNIDADES;
 const unitOf=id=>UNITS.find(u=>u.id===id)||{id,nome:id||'?',cor:'#888'};
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
-$('#logo').src=C.LOGO_URL||'logo.svg';$('#ev').textContent=C.EVENTO+' · '+C.MARCA;
+$('#logo').src=C.LOGO_URL||'img/logo.svg';$('#ev').textContent=C.EVENTO+' · '+C.MARCA;
 
 let ROWS=[],uSel='';
 $('#ufilter').innerHTML=['',...UNITS.map(u=>u.id)].map(id=>`<button data-u="${esc(id)}" class="${id===uSel?'on':''}">${id?esc(unitOf(id).nome):'Todas'}</button>`).join(' ');

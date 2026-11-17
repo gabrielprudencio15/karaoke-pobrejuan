@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0908">
 <title>Sugestões · Karaokê</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="karaoke-store.js?v=202611170100"></script>
+<script src="js/karaoke-store.js?v=202611170900"></script>
 <style>
 :root{--bg:#0b0908;--panel:#161210;--panel2:#201a17;--line:#352b25;--txt:#f6f1ec;--dim:#a39588;--acc:#d67e59;--acc2:#c41d2c;--gold:#b09763;--ok:#4cc38a;--glow:#3b2418;--ink:#0f0806;--field:#0e0b0a}
 html{color-scheme:dark}
@@ -112,7 +112,7 @@ const cleanTitle=t=>String(t||'').replace(/\s*[\(\[][^)\]]*[\)\]]/g,'').replace(
 const mainArtist=a=>String(a||'').split(/\s+(?:feat\.?|ft\.?|part\.?|participa[cç][aã]o)\s+/i)[0].trim();
 const keyOf=(artist,title)=>slug(mainArtist(artist))+'|'+slug(cleanTitle(title));
 
-$('#logo').src=C.LOGO_URL||'logo.svg';$('#ev').textContent=C.EVENTO+' · Karaokê das Unidades';$('#maxTxt').textContent=MAX;
+$('#logo').src=C.LOGO_URL||'img/logo.svg';$('#ev').textContent=C.EVENTO+' · Karaokê das Unidades';$('#maxTxt').textContent=MAX;
 document.title='Sugestões · Karaokê · '+C.MARCA;
 
 let saved={};try{saved=JSON.parse(localStorage.getItem('k_sug')||'{}')}catch(e){}
